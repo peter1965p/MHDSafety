@@ -6,6 +6,7 @@ Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App 
 
 - Eingabe von Hand steht jetzt im Vordergrund: Name und Datum direkt eintippen, das Datum auch kurz als „0911“ oder „9.11.“
 - Barcode- und Datums-Scanner sind nur noch kleine Symbole im Feld, für bei Bedarf
+- Neues App-Icon: der Pingu aus dem Hintergrundbild 🐧
 
 ## [1.0.1] - 2026-11-07
 
