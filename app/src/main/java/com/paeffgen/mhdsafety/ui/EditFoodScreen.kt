@@ -77,6 +77,7 @@ fun EditFoodScreen(
     var loaded by rememberSaveable { mutableStateOf(itemId == null) }
     var name by rememberSaveable { mutableStateOf("") }
     var dateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var ownUseByEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     var dateType by rememberSaveable { mutableStateOf(DateType.BEST_BEFORE) }
     var barcode by rememberSaveable { mutableStateOf<String?>(null) }
     var category by rememberSaveable { mutableStateOf(Category.OTHER) }
@@ -85,6 +86,7 @@ fun EditFoodScreen(
     var categoryTouched by rememberSaveable { mutableStateOf(false) }
     var existing by rememberSaveable { mutableStateOf(false) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showOwnDatePicker by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var pendingLookup by rememberSaveable { mutableStateOf<String?>(null) }
     var lookupMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -99,6 +101,7 @@ fun EditFoodScreen(
             viewModel.load(itemId)?.let {
                 name = it.name
                 dateEpochDay = it.date.toEpochDay()
+                ownUseByEpochDay = it.ownUseBy?.toEpochDay()
                 dateType = it.dateType
                 barcode = it.barcode
                 category = it.category
@@ -143,6 +146,7 @@ fun EditFoodScreen(
     }
 
     val date = dateEpochDay?.let(LocalDate::ofEpochDay)
+    val ownUseBy = ownUseByEpochDay?.let(LocalDate::ofEpochDay)
     val canSave = name.isNotBlank() && date != null
 
     fun buildItem() = FoodItem(
@@ -152,6 +156,7 @@ fun EditFoodScreen(
         dateType = dateType,
         barcode = barcode,
         category = category,
+        ownUseBy = ownUseBy,
     )
 
     Scaffold(
@@ -255,13 +260,40 @@ fun EditFoodScreen(
                 }
             }
 
+            // --- Eigenes Verbrauchsdatum, z. B. nach dem Öffnen ---
             if (date != null) {
-                val preview = FoodItem(name = name, date = date, dateType = dateType)
+                Text("Selbst verbrauchen bis (optional)", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "Z. B. wenn die Packung offen ist. Darf vor dem Packungsdatum liegen.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(onClick = { showOwnDatePicker = true }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(ownUseBy?.formatDe() ?: "Datum wählen")
+                    }
+                    if (ownUseBy != null) {
+                        TextButton(onClick = { ownUseByEpochDay = null }) { Text("Entfernen") }
+                    }
+                }
+            }
+
+            if (date != null) {
+                val preview = FoodItem(name = name, date = date, dateType = dateType, ownUseBy = ownUseBy)
                 val alarm = Expiry.alarmDate(preview, bufferDays)
-                val hint = when (dateType) {
-                    DateType.BEST_BEFORE ->
+                val hint = when {
+                    ownUseBy != null && dateType == DateType.USE_BY && ownUseBy.isAfter(date) ->
+                        "Alarm am ${alarm.formatDe()}. Das eigene Datum liegt hinter dem " +
+                            "Verbrauchsdatum der Packung, deshalb zählt das Packungsdatum."
+                    ownUseBy != null ->
+                        "Alarm am ${alarm.formatDe()} (eigenes Verbrauchsdatum, kein Puffer)."
+                    dateType == DateType.BEST_BEFORE ->
                         "Alarm am ${alarm.formatDe()} (MHD + $bufferDays Tage Puffer)."
-                    DateType.USE_BY ->
+                    else ->
                         "Alarm am ${alarm.formatDe()}. Beim Verbrauchsdatum gibt es keinen Puffer: " +
                             "danach nicht mehr essen."
                 }
@@ -280,21 +312,20 @@ fun EditFoodScreen(
     }
 
     if (showDatePicker) {
-        val state = rememberDatePickerState(
-            initialSelectedDateMillis = (date ?: LocalDate.now()).toUtcMillis(),
+        DatePickDialog(
+            initial = date ?: LocalDate.now(),
+            onPicked = { dateEpochDay = it.toEpochDay() },
+            onDismiss = { showDatePicker = false },
         )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.selectedDateMillis?.let { dateEpochDay = utcMillisToLocalDate(it).toEpochDay() }
-                    showDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
-            },
-        ) { DatePicker(state = state) }
+    }
+
+    if (showOwnDatePicker) {
+        DatePickDialog(
+            // Vorschlag: heute, aber nie hinter dem Packungsdatum.
+            initial = ownUseBy ?: minOf(LocalDate.now(), date ?: LocalDate.now()),
+            onPicked = { ownUseByEpochDay = it.toEpochDay() },
+            onDismiss = { showOwnDatePicker = false },
+        )
     }
 
     if (confirmDelete) {
@@ -314,4 +345,22 @@ fun EditFoodScreen(
             },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onDismiss: () -> Unit) {
+    val state = rememberDatePickerState(initialSelectedDateMillis = initial.toUtcMillis())
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                state.selectedDateMillis?.let { onPicked(utcMillisToLocalDate(it)) }
+                onDismiss()
+            }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
+        },
+    ) { DatePicker(state = state) }
 }

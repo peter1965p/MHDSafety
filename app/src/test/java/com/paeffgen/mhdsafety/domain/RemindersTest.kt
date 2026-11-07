@@ -41,4 +41,11 @@ class RemindersTest {
         val r = Reminders.collect(listOf(item("Nudeln", today.plusDays(100))), 3, true, today)
         assertTrue(r.isEmpty)
     }
+
+    @Test
+    fun ownUseBy_usesUseByTexts() {
+        val opened = FoodItem(name = "Sahne", date = today.plusDays(5), ownUseBy = today)
+        val r = Reminders.collect(listOf(opened), 3, true, today)
+        assertEquals(listOf("⏰ Sahne: heute verbrauchen"), r.lines())
+    }
 }

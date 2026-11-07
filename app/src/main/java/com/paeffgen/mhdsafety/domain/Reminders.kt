@@ -1,6 +1,5 @@
 package com.paeffgen.mhdsafety.domain
 
-import com.paeffgen.mhdsafety.data.DateType
 import com.paeffgen.mhdsafety.data.FoodItem
 import java.time.LocalDate
 
@@ -25,15 +24,11 @@ data class DailyReminder(
             expired.map { "❌ ${it.name}: ${expiredText(it)}" } +
             dueTomorrow.map { "🔔 ${it.name}: morgen fällig" }
 
-    private fun dueTodayText(item: FoodItem) = when (item.dateType) {
-        DateType.USE_BY -> "heute verbrauchen"
-        DateType.BEST_BEFORE -> "Puffer endet heute"
-    }
+    private fun dueTodayText(item: FoodItem) =
+        if (item.isUseBy) "heute verbrauchen" else "Puffer endet heute"
 
-    private fun expiredText(item: FoodItem) = when (item.dateType) {
-        DateType.USE_BY -> "nicht mehr essen"
-        DateType.BEST_BEFORE -> "drüber, bitte prüfen"
-    }
+    private fun expiredText(item: FoodItem) =
+        if (item.isUseBy) "nicht mehr essen" else "drüber, bitte prüfen"
 }
 
 object Reminders {

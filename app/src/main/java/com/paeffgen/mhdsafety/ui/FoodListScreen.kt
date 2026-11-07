@@ -219,12 +219,13 @@ private fun FoodRow(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "$label ${item.date.formatDe()}",
+                    "$label ${item.date.formatDe()}" +
+                        (item.ownUseBy?.let { " · selbst bis ${it.formatDe()}" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     "Alarm ${daysText(days)}" +
-                        if (item.dateType == DateType.BEST_BEFORE) " (${alarm.formatDe()})" else "",
+                        if (alarm != item.date) " (${alarm.formatDe()})" else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = status.color(),
                 )

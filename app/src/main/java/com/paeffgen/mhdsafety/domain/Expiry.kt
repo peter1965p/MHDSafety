@@ -27,10 +27,15 @@ object Expiry {
     /**
      * Tag, an dem Alarm geschlagen wird.
      * MHD: Datum + Puffer. Verbrauchsdatum: genau das Datum, ohne Puffer.
+     * Ein eigenes Verbrauchsdatum ersetzt das, darf aber nie hinter
+     * einem aufgedruckten Verbrauchsdatum liegen.
      */
-    fun alarmDate(item: FoodItem, bufferDays: Int): LocalDate = when (item.dateType) {
-        DateType.BEST_BEFORE -> item.date.plusDays(bufferDays.toLong())
-        DateType.USE_BY -> item.date
+    fun alarmDate(item: FoodItem, bufferDays: Int): LocalDate {
+        val own = item.ownUseBy
+        return when (item.dateType) {
+            DateType.BEST_BEFORE -> own ?: item.date.plusDays(bufferDays.toLong())
+            DateType.USE_BY -> if (own != null && own.isBefore(item.date)) own else item.date
+        }
     }
 
     /** Tage bis zum Alarm (negativ = Alarm ist vorbei). */

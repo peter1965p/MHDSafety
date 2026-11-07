@@ -42,4 +42,20 @@ class ExpiryTest {
         assertEquals(ExpiryStatus.DUE, Expiry.status(item(today, DateType.USE_BY), 3, today))
         assertEquals(ExpiryStatus.EXPIRED, Expiry.status(item(today.minusDays(1), DateType.USE_BY), 3, today))
     }
+
+    @Test
+    fun ownUseBy_beforeMhd_replacesMhdAndBuffer() {
+        // Sylvis Fall: MHD 09.11., selbst verbrauchen bis 08.11.
+        val i = FoodItem(name = "Test", date = LocalDate.of(2026, 11, 9), ownUseBy = LocalDate.of(2026, 11, 8))
+        assertEquals(LocalDate.of(2026, 11, 8), Expiry.alarmDate(i, 3))
+    }
+
+    @Test
+    fun ownUseBy_neverLaterThanPrintedUseBy() {
+        val printed = LocalDate.of(2026, 11, 9)
+        val later = FoodItem(name = "Hack", date = printed, dateType = DateType.USE_BY, ownUseBy = printed.plusDays(2))
+        val earlier = later.copy(ownUseBy = printed.minusDays(1))
+        assertEquals(printed, Expiry.alarmDate(later, 3))
+        assertEquals(printed.minusDays(1), Expiry.alarmDate(earlier, 3))
+    }
 }

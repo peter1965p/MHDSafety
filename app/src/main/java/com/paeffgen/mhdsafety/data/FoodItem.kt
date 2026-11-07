@@ -22,4 +22,12 @@ data class FoodItem(
     val dateType: DateType = DateType.BEST_BEFORE,
     val barcode: String? = null,
     @ColumnInfo(defaultValue = "OTHER") val category: Category = Category.OTHER,
-)
+    /**
+     * Selbst festgelegtes "zu verbrauchen bis", z. B. nach dem Öffnen.
+     * Darf vor dem Packungsdatum liegen und ersetzt dann Packungsdatum + Puffer.
+     */
+    val ownUseBy: LocalDate? = null,
+) {
+    /** Wird wie ein Verbrauchsdatum behandelt (kein Puffer, danach nicht mehr essen)? */
+    val isUseBy: Boolean get() = dateType == DateType.USE_BY || ownUseBy != null
+}

@@ -7,6 +7,7 @@ Android-App, die Lebensmittel und ihre Haltbarkeitsdaten im Blick behält – da
 - **Erfassen per Kamera:** Barcode scannen (Name und Kategorie kommen von [Open Food Facts](https://world.openfoodfacts.org)) und das Datum direkt von der Packung ablesen
 - **Liste nach Supermarkt-Kategorien** oder nach Datum, mit Ampelfarben
 - **Alarm mit Puffer:** Bei „Mindestens haltbar bis“ kommt der Alarm erst ein paar Tage später (einstellbar, Standard 3). Bei „Zu verbrauchen bis“ (Fleisch, Fisch …) gibt es **keinen** Puffer
+- **Eigenes Verbrauchsdatum:** Zusätzlich zum Packungsdatum lässt sich ein eigenes „selbst verbrauchen bis“ eintragen, z. B. wenn die Packung offen ist. Beispiel: MHD 09.11., selbst verbrauchen bis 08.11. → Alarm am 08.11. Das eigene Datum darf beliebig früher liegen und ersetzt dann Packungsdatum und Puffer. Später als ein aufgedrucktes „Zu verbrauchen bis“ geht nicht, dann zählt das Packungsdatum
 - **Tägliche Erinnerung** mit Vorwarnung einen Tag vorher
 - **Updates automatisch** über die Releases dieses Repos
 - Alle Daten bleiben auf dem Handy, kein Konto nötig
