@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Release-APKs liegen auf GitHub, lokal in releases/
+/releases
+# Signier-Schlüssel niemals einchecken
+*.jks
+*.keystore
