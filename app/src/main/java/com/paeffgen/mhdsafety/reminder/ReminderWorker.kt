@@ -17,13 +17,13 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val today = LocalDate.now()
 
         // Lange Abgelaufenes zuerst wegräumen, damit es nicht ewig in der Erinnerung steht.
-        AutoDelete.run(app.database.foodDao(), settings, today)
+        runCatching { AutoDelete.run(app.foods, settings, today) }
 
         // Nicht zweimal am selben Tag benachrichtigen (z. B. nach Ändern der Uhrzeit).
         if (settings.lastNotified.first() == today) return Result.success()
 
         val reminder = Reminders.collect(
-            items = app.database.foodDao().getAll(),
+            items = app.foods.getAll(),
             bufferDays = settings.bufferDays.first(),
             preAlarm = settings.preAlarm.first(),
             today = today,

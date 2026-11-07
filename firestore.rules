@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Sicherheitsregeln für die gemeinsame Liste von MHD Safety.
+// In der Firebase-Konsole unter Firestore Database > Regeln einfügen und veröffentlichen.
+//
+// Freigeschaltet ist, wessen (bestätigte) Google-E-Mail-Adresse als Dokument-ID
+// in der Sammlung "allowed" steht. Die Liste pflegt man in der Konsole.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAllowed() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email));
+    }
+
+    // Jeder darf nur nachsehen, ob er selbst freigeschaltet ist. Schreiben nur über die Konsole.
+    match /allowed/{email} {
+      allow get: if request.auth != null && request.auth.token.email == email;
+    }
+
+    // Die Lebensmittel: lesen und schreiben nur für Freigeschaltete.
+    match /items/{itemId} {
+      allow read, write: if isAllowed();
+    }
+  }
+}

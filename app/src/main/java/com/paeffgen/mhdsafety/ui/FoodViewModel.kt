@@ -1,12 +1,14 @@
 package com.paeffgen.mhdsafety.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.paeffgen.mhdsafety.BuildConfig
 import com.paeffgen.mhdsafety.MhdSafetyApp
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.LookupResult
+import com.paeffgen.mhdsafety.data.SignInResult
 import com.paeffgen.mhdsafety.data.NotifyTime
 import com.paeffgen.mhdsafety.data.ThemeMode
 import com.paeffgen.mhdsafety.domain.Expiry
@@ -36,10 +38,17 @@ sealed interface UpdateState {
 
 class FoodViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as MhdSafetyApp
-    private val dao = app.database.foodDao()
+    private val foods = app.foods
     private val settings = app.settings
 
-    val items: StateFlow<List<FoodItem>?> = dao.observeAll().state(null)
+    val items: StateFlow<List<FoodItem>?> = foods.items.state(null)
+
+    /** Angemeldetes Konto für die gemeinsame Liste (null = nur auf dem Handy). */
+    val cloudEmail: StateFlow<String?> = app.account.email
+    private val _cloudMessage = MutableStateFlow<String?>(null)
+    val cloudMessage: StateFlow<String?> = _cloudMessage.asStateFlow()
+    private val _cloudBusy = MutableStateFlow(false)
+    val cloudBusy: StateFlow<Boolean> = _cloudBusy.asStateFlow()
     val bufferDays: StateFlow<Int> = settings.bufferDays.state(Expiry.DEFAULT_BUFFER_DAYS)
     val deleteAfterDays: StateFlow<Int> = settings.deleteAfterDays.state(Expiry.DEFAULT_DELETE_AFTER_DAYS)
     val notifyTime: StateFlow<NotifyTime> = settings.notifyTime.state(NotifyTime.DEFAULT)
@@ -64,11 +73,11 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
     private fun <T> Flow<T>.state(initial: T): StateFlow<T> =
         stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
 
-    suspend fun load(id: Long): FoodItem? = dao.getById(id)
+    suspend fun load(id: Long): FoodItem? = foods.getById(id)
 
     fun save(item: FoodItem) {
         viewModelScope.launch {
-            dao.upsert(item)
+            foods.save(item)
             // Produkt merken, damit es beim nächsten Scan sofort erkannt wird.
             item.barcode?.let { app.products.remember(it, item.name, item.category) }
         }
@@ -77,7 +86,7 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun lookupProduct(barcode: String): LookupResult = app.products.lookup(barcode)
 
     fun delete(item: FoodItem) {
-        viewModelScope.launch { dao.delete(item) }
+        viewModelScope.launch { foods.delete(item) }
     }
 
     fun setBufferDays(days: Int) {
@@ -148,6 +157,32 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: IOException) {
                 _updateState.value = UpdateState.Failed("Download fehlgeschlagen: ${e.message ?: "unbekannter Fehler"}")
             }
+        }
+    }
+
+    /** @param activityContext eine Activity, damit der Google-Konto-Dialog erscheinen kann */
+    fun signIn(activityContext: Context) {
+        if (_cloudBusy.value) return
+        viewModelScope.launch {
+            _cloudBusy.value = true
+            _cloudMessage.value = when (val result = app.account.signIn(activityContext)) {
+                is SignInResult.Success -> {
+                    val moved = foods.moveLocalToCloud()
+                    if (moved > 0) "Angemeldet. $moved Einträge vom Handy in die gemeinsame Liste übernommen." else null
+                }
+                is SignInResult.NotAllowed ->
+                    "${result.email} ist nicht freigeschaltet. Die Adresse muss in Firebase unter „allowed“ eingetragen sein."
+                SignInResult.Cancelled -> null
+                is SignInResult.Failed -> result.message
+            }
+            _cloudBusy.value = false
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            app.account.signOut()
+            _cloudMessage.value = "Abgemeldet. Die gemeinsame Liste bleibt in der Cloud, auf dem Handy wird wieder lokal gespeichert."
         }
     }
 
