@@ -52,6 +52,7 @@ android {
         }
         release {
             signingConfig = signingConfigs.findByName("release")
+            proguardFiles("proguard-rules.pro")
             // Nur Handy-Prozessoren (spart ~35 MB Texterkennung für x86).
             // Zum Testen im Emulator: ./gradlew assembleRelease -PallAbis
             if (!providers.gradleProperty("allAbis").isPresent) {

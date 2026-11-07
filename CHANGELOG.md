@@ -2,6 +2,10 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.0.3] - 2026-11-07
+
+- Behoben: Die App stürzte ab, sobald man den Barcode- oder Datums-Scanner öffnete
+
 ## [1.0.2] - 2026-11-07
 
 - Eingabe von Hand steht jetzt im Vordergrund: Name und Datum direkt eintippen, das Datum auch kurz als „0911“ oder „9.11.“
