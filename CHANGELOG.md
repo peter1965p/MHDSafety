@@ -2,6 +2,11 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.1.0] - 2026-11-07
+
+- Neu: Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm. In den Einstellungen von 0 (am Tag danach) bis 30 Tage einstellbar
+- Die tägliche Erinnerung erwähnt dadurch längst Abgelaufenes nicht mehr endlos
+
 ## [1.0.3] - 2026-11-07
 
 - Behoben: Die App stürzte ab, sobald man den Barcode- oder Datums-Scanner öffnete

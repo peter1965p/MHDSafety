@@ -22,4 +22,7 @@ interface FoodDao {
 
     @Delete
     suspend fun delete(item: FoodItem)
+
+    @Delete
+    suspend fun deleteAll(items: List<FoodItem>)
 }

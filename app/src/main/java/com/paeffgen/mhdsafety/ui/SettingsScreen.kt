@@ -54,6 +54,7 @@ import kotlin.math.roundToInt
 fun SettingsScreen(viewModel: FoodViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val bufferDays by viewModel.bufferDays.collectAsStateWithLifecycle()
+    val deleteAfterDays by viewModel.deleteAfterDays.collectAsStateWithLifecycle()
     val notifyTime by viewModel.notifyTime.collectAsStateWithLifecycle()
     val preAlarm by viewModel.preAlarm.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -115,6 +116,25 @@ fun SettingsScreen(viewModel: FoodViewModel, onBack: () -> Unit) {
             Text(
                 "Gilt nicht für „Zu verbrauchen bis“. Dort kommt der Alarm immer am Datum selbst.",
                 style = MaterialTheme.typography.bodySmall,
+            )
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+            Text("Abgelaufenes automatisch löschen", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (deleteAfterDays == 0) {
+                    "Einträge verschwinden am Tag nach dem Alarm."
+                } else {
+                    "Einträge verschwinden $deleteAfterDays ${if (deleteAfterDays == 1) "Tag" else "Tage"} " +
+                        "nach dem Alarm. Bis dahin stehen sie rot als „abgelaufen“ in der Liste."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Slider(
+                value = deleteAfterDays.toFloat(),
+                onValueChange = { viewModel.setDeleteAfterDays(it.roundToInt()) },
+                valueRange = 0f..Expiry.MAX_DELETE_AFTER_DAYS.toFloat(),
+                steps = Expiry.MAX_DELETE_AFTER_DAYS - 1,
             )
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))

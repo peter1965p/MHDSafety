@@ -24,10 +24,16 @@ class SettingsRepository(private val context: Context) {
     private val themeModeKey = stringPreferencesKey("theme_mode")
     private val autoUpdateKey = booleanPreferencesKey("auto_update")
     private val notifiedUpdateKey = stringPreferencesKey("notified_update_version")
+    private val deleteAfterDaysKey = intPreferencesKey("delete_after_days")
 
     /** Tage, die nach dem MHD noch draufgerechnet werden, bevor Alarm kommt. */
     val bufferDays: Flow<Int> = context.dataStore.data.map {
         it[bufferDaysKey] ?: Expiry.DEFAULT_BUFFER_DAYS
+    }
+
+    /** So viele Tage nach dem Alarmtag werden abgelaufene Einträge automatisch gelöscht. */
+    val deleteAfterDays: Flow<Int> = context.dataStore.data.map {
+        it[deleteAfterDaysKey] ?: Expiry.DEFAULT_DELETE_AFTER_DAYS
     }
 
     /** Uhrzeit der täglichen Erinnerung als Minuten seit Mitternacht. */
@@ -56,6 +62,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setBufferDays(days: Int) {
         context.dataStore.edit { it[bufferDaysKey] = days.coerceIn(0, Expiry.MAX_BUFFER_DAYS) }
+    }
+
+    suspend fun setDeleteAfterDays(days: Int) {
+        context.dataStore.edit { it[deleteAfterDaysKey] = days.coerceIn(0, Expiry.MAX_DELETE_AFTER_DAYS) }
     }
 
     suspend fun setNotifyTime(time: NotifyTime) {

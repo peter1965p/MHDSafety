@@ -58,4 +58,26 @@ class ExpiryTest {
         assertEquals(printed, Expiry.alarmDate(later, 3))
         assertEquals(printed.minusDays(1), Expiry.alarmDate(earlier, 3))
     }
+
+    @Test
+    fun autoDelete_afterGracePeriod() {
+        // Verbrauchsdatum (= Alarmtag) vor 7 bzw. 8 Tagen
+        val sevenAgo = item(today.minusDays(7), DateType.USE_BY)
+        val eightAgo = item(today.minusDays(8), DateType.USE_BY)
+        assertEquals(false, Expiry.shouldAutoDelete(sevenAgo, 3, 7, today))
+        assertEquals(true, Expiry.shouldAutoDelete(eightAgo, 3, 7, today))
+    }
+
+    @Test
+    fun autoDelete_countsFromAlarmIncludingBuffer() {
+        // MHD vor 10 Tagen + 3 Tage Puffer = Alarm vor 7 Tagen -> bleibt noch
+        assertEquals(false, Expiry.shouldAutoDelete(item(today.minusDays(10)), 3, 7, today))
+        assertEquals(true, Expiry.shouldAutoDelete(item(today.minusDays(11)), 3, 7, today))
+    }
+
+    @Test
+    fun autoDelete_zeroMeansDayAfterAlarm() {
+        assertEquals(false, Expiry.shouldAutoDelete(item(today, DateType.USE_BY), 3, 0, today))
+        assertEquals(true, Expiry.shouldAutoDelete(item(today.minusDays(1), DateType.USE_BY), 3, 0, today))
+    }
 }

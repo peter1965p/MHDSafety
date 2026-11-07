@@ -2,6 +2,7 @@ package com.paeffgen.mhdsafety
 
 import android.app.Application
 import com.paeffgen.mhdsafety.data.AppDatabase
+import com.paeffgen.mhdsafety.data.AutoDelete
 import com.paeffgen.mhdsafety.data.ProductRepository
 import com.paeffgen.mhdsafety.data.SettingsRepository
 import com.paeffgen.mhdsafety.reminder.Notifications
@@ -25,6 +26,9 @@ class MhdSafetyApp : Application() {
         super.onCreate()
         Notifications.createChannel(this)
         UpdateWorker.schedule(this)
+        appScope.launch {
+            AutoDelete.run(database.foodDao(), settings)
+        }
         appScope.launch {
             ReminderScheduler.schedule(this@MhdSafetyApp, settings.notifyTime.first(), replace = false)
         }

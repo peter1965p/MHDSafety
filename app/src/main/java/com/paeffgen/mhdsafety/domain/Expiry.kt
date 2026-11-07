@@ -23,6 +23,8 @@ object Expiry {
     const val DEFAULT_BUFFER_DAYS = 3
     const val MAX_BUFFER_DAYS = 14
     const val SOON_DAYS = 2
+    const val DEFAULT_DELETE_AFTER_DAYS = 7
+    const val MAX_DELETE_AFTER_DAYS = 30
 
     /**
      * Tag, an dem Alarm geschlagen wird.
@@ -41,6 +43,14 @@ object Expiry {
     /** Tage bis zum Alarm (negativ = Alarm ist vorbei). */
     fun daysUntilAlarm(item: FoodItem, bufferDays: Int, today: LocalDate): Long =
         ChronoUnit.DAYS.between(today, alarmDate(item, bufferDays))
+
+    /**
+     * Soll der Eintrag automatisch gelöscht werden?
+     * Ja, wenn der Alarmtag mehr als [deleteAfterDays] Tage zurückliegt
+     * (0 = am Tag nach dem Alarm).
+     */
+    fun shouldAutoDelete(item: FoodItem, bufferDays: Int, deleteAfterDays: Int, today: LocalDate): Boolean =
+        daysUntilAlarm(item, bufferDays, today) < -deleteAfterDays
 
     fun status(item: FoodItem, bufferDays: Int, today: LocalDate): ExpiryStatus {
         val days = daysUntilAlarm(item, bufferDays, today)

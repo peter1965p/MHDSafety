@@ -41,6 +41,7 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
 
     val items: StateFlow<List<FoodItem>?> = dao.observeAll().state(null)
     val bufferDays: StateFlow<Int> = settings.bufferDays.state(Expiry.DEFAULT_BUFFER_DAYS)
+    val deleteAfterDays: StateFlow<Int> = settings.deleteAfterDays.state(Expiry.DEFAULT_DELETE_AFTER_DAYS)
     val notifyTime: StateFlow<NotifyTime> = settings.notifyTime.state(NotifyTime.DEFAULT)
     val preAlarm: StateFlow<Boolean> = settings.preAlarm.state(true)
     val groupByCategory: StateFlow<Boolean> = settings.groupByCategory.state(true)
@@ -81,6 +82,10 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setBufferDays(days: Int) {
         viewModelScope.launch { settings.setBufferDays(days) }
+    }
+
+    fun setDeleteAfterDays(days: Int) {
+        viewModelScope.launch { settings.setDeleteAfterDays(days) }
     }
 
     fun setNotifyTime(time: NotifyTime) {
