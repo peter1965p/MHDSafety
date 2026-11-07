@@ -24,7 +24,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.paeffgen.mhdsafety.R
@@ -57,6 +57,7 @@ import com.paeffgen.mhdsafety.data.DateType
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.LookupResult
 import com.paeffgen.mhdsafety.domain.Expiry
+import com.paeffgen.mhdsafety.domain.ManualDate
 import com.paeffgen.mhdsafety.domain.ParsedDate
 import java.time.LocalDate
 
@@ -77,6 +78,8 @@ fun EditFoodScreen(
     var loaded by rememberSaveable { mutableStateOf(itemId == null) }
     var name by rememberSaveable { mutableStateOf("") }
     var dateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Was im Datumsfeld steht (getippt oder aus Scan/Kalender übernommen).
+    var dateText by rememberSaveable { mutableStateOf("") }
     var ownUseByEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     var dateType by rememberSaveable { mutableStateOf(DateType.BEST_BEFORE) }
     var barcode by rememberSaveable { mutableStateOf<String?>(null) }
@@ -101,6 +104,7 @@ fun EditFoodScreen(
             viewModel.load(itemId)?.let {
                 name = it.name
                 dateEpochDay = it.date.toEpochDay()
+                dateText = it.date.formatDe()
                 ownUseByEpochDay = it.ownUseBy?.toEpochDay()
                 dateType = it.dateType
                 barcode = it.barcode
@@ -122,6 +126,7 @@ fun EditFoodScreen(
         }
         scannedDate?.let {
             dateEpochDay = it.date.toEpochDay()
+            dateText = it.date.formatDe()
             if (it.useBy) {
                 dateType = DateType.USE_BY
                 dateTypeTouched = true
@@ -187,12 +192,21 @@ fun EditFoodScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // --- Produkt ---
-            FilledTonalButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth()) {
-                Icon(painterResource(R.drawable.ic_barcode), contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Barcode scannen")
-            }
+            // --- Produkt: von Hand tippen, Barcode nur bei Bedarf ---
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                trailingIcon = {
+                    IconButton(onClick = onScanBarcode) {
+                        Icon(painterResource(R.drawable.ic_barcode), contentDescription = "Barcode scannen")
+                    }
+                },
+                supportingText = barcode?.let { { Text("Barcode $it") } },
+                modifier = Modifier.fillMaxWidth(),
+            )
             if (pendingLookup != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -203,15 +217,6 @@ fun EditFoodScreen(
                 lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
 
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                supportingText = barcode?.let { { Text("Barcode $it") } },
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             // --- Kategorie ---
             Text("Kategorie", style = MaterialTheme.typography.labelLarge)
@@ -243,22 +248,37 @@ fun EditFoodScreen(
                 ) { Text("Zu verbrauchen bis") }
             }
 
-            Text(
-                date?.formatDe() ?: "Noch kein Datum",
-                style = MaterialTheme.typography.headlineSmall,
+            val dateTextInvalid = dateText.isNotBlank() && date == null
+            OutlinedTextField(
+                value = dateText,
+                onValueChange = { text ->
+                    dateText = text
+                    dateEpochDay = ManualDate.parse(text, LocalDate.now())?.toEpochDay()
+                },
+                label = { Text("Datum") },
+                placeholder = { Text("z. B. 09.11. oder 0911") },
+                singleLine = true,
+                isError = dateTextInvalid,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                trailingIcon = {
+                    Row {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Kalender")
+                        }
+                        IconButton(onClick = onScanDate) {
+                            Icon(painterResource(R.drawable.ic_camera), contentDescription = "Datum scannen")
+                        }
+                    }
+                },
+                supportingText = {
+                    when {
+                        dateTextInvalid -> Text("Datum nicht erkannt")
+                        date != null && dateText != date.formatDe() -> Text("= ${date.formatDe()}")
+                        else -> Unit
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = onScanDate, modifier = Modifier.weight(1f)) {
-                    Icon(painterResource(R.drawable.ic_camera), contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Scannen")
-                }
-                OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.DateRange, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Kalender")
-                }
-            }
 
             // --- Eigenes Verbrauchsdatum, z. B. nach dem Öffnen ---
             if (date != null) {
@@ -314,7 +334,10 @@ fun EditFoodScreen(
     if (showDatePicker) {
         DatePickDialog(
             initial = date ?: LocalDate.now(),
-            onPicked = { dateEpochDay = it.toEpochDay() },
+            onPicked = {
+                dateEpochDay = it.toEpochDay()
+                dateText = it.formatDe()
+            },
             onDismiss = { showDatePicker = false },
         )
     }

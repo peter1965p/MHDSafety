@@ -2,6 +2,11 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.0.2] - 2026-11-07
+
+- Eingabe von Hand steht jetzt im Vordergrund: Name und Datum direkt eintippen, das Datum auch kurz als „0911“ oder „9.11.“
+- Barcode- und Datums-Scanner sind nur noch kleine Symbole im Feld, für bei Bedarf
+
 ## [1.0.1] - 2026-11-07
 
 - Neu: eigenes „Selbst verbrauchen bis“ zusätzlich zum Packungsdatum, z. B. für offene Packungen. Es darf vor dem MHD liegen (MHD 09.11., selbst bis 08.11. → Alarm am 08.11.)
