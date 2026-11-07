@@ -12,7 +12,7 @@ Android-App, die Lebensmittel und ihre Haltbarkeitsdaten im Blick behält – da
 - **Tägliche Erinnerung** mit Vorwarnung einen Tag vorher
 - **Räumt selbst auf:** Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm (einstellbar von 0 bis 30 Tage). Bis dahin stehen sie rot als „abgelaufen“ in der Liste
 - **Updates automatisch** über die Releases dieses Repos
-- Alle Daten bleiben auf dem Handy, kein Konto nötig
+- **Gemeinsame Liste (optional):** In den Einstellungen mit Google anmelden, dann teilen sich alle freigeschalteten Konten eine Liste, auch offline. Ohne Anmeldung bleibt alles nur auf dem Handy, kein Konto nötig
 
 ## Installieren
 
@@ -43,6 +43,14 @@ MHD_KEY_ALIAS=mhdsafety
 ```
 
 Geht der Schlüssel verloren, können installierte Apps keine Updates mehr bekommen – also gut sichern.
+
+### Firebase (gemeinsame Liste und Absturzberichte)
+
+- Projekt `mhd-db` in der [Firebase-Konsole](https://console.firebase.google.com), Tarif Spark (kostenlos). `app/google-services.json` gehört dazu und ist kein Geheimnis
+- Die Lebensmittel liegen in Firestore (Frankfurt) in der Sammlung `items`
+- **Freischalten:** In Firestore unter der Sammlung `allowed` ein Dokument anlegen, dessen ID die Gmail-Adresse ist (z. B. Feld `name` = `Sylvi`). Ohne Eintrag kommt niemand rein
+- Die Sicherheitsregeln stehen in `firestore.rules`; nach einer Änderung in der Konsole unter Firestore → Regeln einfügen und veröffentlichen
+- Abstürze der Release-Version landen in der Konsole unter Crashlytics
 
 ## Danke
 

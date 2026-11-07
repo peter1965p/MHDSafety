@@ -6,6 +6,8 @@ Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App 
 
 - Neu: Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm. In den Einstellungen von 0 (am Tag danach) bis 30 Tage einstellbar
 - Die tägliche Erinnerung erwähnt dadurch längst Abgelaufenes nicht mehr endlos
+- Neu: Gemeinsame Liste für die Familie. In den Einstellungen mit Google anmelden, dann sehen alle freigeschalteten Konten dieselben Lebensmittel, auch offline
+- Abstürze werden automatisch gemeldet, damit Fehler schneller behoben werden
 
 ## [1.0.3] - 2026-11-07
 
