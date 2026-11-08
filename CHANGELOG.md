@@ -2,6 +2,12 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.5.0] - 2026-11-08
+
+- Besser: Datum scannen liest jetzt auch Punktschrift (Tintenstrahl-Aufdruck) und blassen Druck. Die Kamera schaut genauer hin und bereitet das Bild im Rahmen auf, bevor sie liest
+- Typische Lesefehler werden ausgeglichen, z. B. S statt 5, B statt 8, Komma statt Punkt oder Leerzeichen zwischen den Ziffern
+- Die Kamera startet leicht gezoomt, so lässt sich das Handy weiter weg halten und stellt besser scharf. Tipp im Scanner: unscharf → aufs Bild tippen, blass oder spiegelnd → Licht an oder schräg halten
+
 ## [1.4.0] - 2026-11-08
 
 - Neu: „Gekocht“-Knopf 🔥 im Rezept. Er zieht die verbrauchten Mengen vom Bestand ab, bald Ablaufendes zuerst. Was aufgebraucht ist, verschwindet aus der Liste
