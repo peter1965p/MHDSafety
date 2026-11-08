@@ -5,7 +5,10 @@ import com.paeffgen.mhdsafety.data.AppDatabase
 import com.paeffgen.mhdsafety.data.AutoDelete
 import com.paeffgen.mhdsafety.data.CloudAccount
 import com.paeffgen.mhdsafety.data.CloudFoodStore
+import com.paeffgen.mhdsafety.data.CloudRecipeStore
 import com.paeffgen.mhdsafety.data.FoodRepository
+import com.paeffgen.mhdsafety.data.RecipeFetcher
+import com.paeffgen.mhdsafety.data.RecipeRepository
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.paeffgen.mhdsafety.data.ProductRepository
 import com.paeffgen.mhdsafety.data.SettingsRepository
@@ -26,6 +29,8 @@ class MhdSafetyApp : Application() {
     val updates by lazy { UpdateRepository(this) }
     val account by lazy { CloudAccount(this) }
     val foods by lazy { FoodRepository(database.foodDao(), CloudFoodStore(), account) }
+    val recipes by lazy { RecipeRepository(database.recipeDao(), CloudRecipeStore(), account) }
+    val recipeFetcher by lazy { RecipeFetcher() }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {

@@ -68,6 +68,7 @@ fun FoodListScreen(
     viewModel: FoodViewModel,
     onAdd: () -> Unit,
     onEdit: (Long) -> Unit,
+    onRecipes: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
@@ -108,6 +109,9 @@ fun FoodListScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text("MHD Safety") },
                 actions = {
+                    IconButton(onClick = onRecipes) {
+                        Text("🍳", style = MaterialTheme.typography.titleLarge)
+                    }
                     IconButton(onClick = { viewModel.setGroupByCategory(!groupByCategory) }) {
                         if (groupByCategory) {
                             Icon(Icons.Default.DateRange, contentDescription = "Nach Datum sortieren")

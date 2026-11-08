@@ -23,5 +23,10 @@ service cloud.firestore {
     match /items/{itemId} {
       allow read, write: if isAllowed();
     }
+
+    // Gespeicherte Rezepte: ebenso nur für Freigeschaltete.
+    match /recipes/{recipeId} {
+      allow read, write: if isAllowed();
+    }
   }
 }

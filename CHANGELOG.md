@@ -2,6 +2,13 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.2.0] - 2026-11-08
+
+- Neu: Rezepte 🍳 (oben in der Liste). „Was koche ich?“ schlägt Zutaten aus eurem Bestand vor, bald Ablaufendes ist schon ausgewählt, und sucht damit Rezepte im Netz
+- Rezept gefunden? Im Browser „Teilen“ → MHD Safety, oder den Link einfügen. Die App liest die Zutaten und zeigt, was da ist (✅), was zum Grundvorrat gehört (🧂) und was fehlt (❌)
+- Gespeicherte Rezepte stehen passend zum Bestand sortiert: zuerst, wofür alles da ist, dann was am meisten bald Ablaufendes verbraucht
+- Mit Anmeldung teilt ihr auch die Rezepte
+
 ## [1.1.0] - 2026-11-07
 
 - Neu: Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm. In den Einstellungen von 0 (am Tag danach) bis 30 Tage einstellbar

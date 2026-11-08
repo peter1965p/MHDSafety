@@ -1,6 +1,7 @@
 package com.paeffgen.mhdsafety
 
 import android.Manifest
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -26,11 +27,16 @@ import com.paeffgen.mhdsafety.reminder.Notifications
 import com.paeffgen.mhdsafety.ui.EditFoodScreen
 import com.paeffgen.mhdsafety.ui.FoodListScreen
 import com.paeffgen.mhdsafety.ui.FoodViewModel
+import com.paeffgen.mhdsafety.ui.RecipeDetailScreen
+import com.paeffgen.mhdsafety.ui.RecipeImportScreen
+import com.paeffgen.mhdsafety.ui.RecipeViewModel
+import com.paeffgen.mhdsafety.ui.RecipesScreen
 import com.paeffgen.mhdsafety.ui.ScanMode
 import com.paeffgen.mhdsafety.ui.ScanScreen
 import com.paeffgen.mhdsafety.ui.SettingsScreen
 import com.paeffgen.mhdsafety.ui.UpdateDialog
 import com.paeffgen.mhdsafety.ui.theme.MHDSafetyTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.time.LocalDate
 
 // Schlüssel, über die der Scan-Bildschirm sein Ergebnis an die Erfassen-Seite zurückgibt.
@@ -39,10 +45,15 @@ private const val KEY_DATE = "scan_date"
 private const val KEY_USE_BY = "scan_use_by"
 
 class MainActivity : ComponentActivity() {
+    /** Per "Teilen" an die App geschickter Text (z. B. ein Rezept-Link aus dem Browser). */
+    private val sharedText = MutableStateFlow<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) handleShare(intent)
         setContent {
             val vm: FoodViewModel = viewModel()
+            val recipeVm: RecipeViewModel = viewModel()
             val themeMode by vm.themeMode.collectAsStateWithLifecycle()
             val dark = when (themeMode) {
                 ThemeMode.DARK -> true
@@ -84,13 +95,55 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val navController = rememberNavController()
+                val shared by sharedText.collectAsStateWithLifecycle()
+                LaunchedEffect(shared) {
+                    val text = shared ?: return@LaunchedEffect
+                    sharedText.value = null
+                    recipeVm.startImport(text)
+                    navController.navigate("recipeImport") { launchSingleTop = true }
+                }
                 NavHost(navController, startDestination = "list") {
                     composable("list") {
                         FoodListScreen(
                             viewModel = vm,
                             onAdd = { navController.navigate("edit") },
                             onEdit = { id -> navController.navigate("edit?id=$id") },
+                            onRecipes = { navController.navigate("recipes") },
                             onSettings = { navController.navigate("settings") },
+                        )
+                    }
+                    composable("recipes") {
+                        RecipesScreen(
+                            viewModel = recipeVm,
+                            onOpen = { id -> navController.navigate("recipe/$id") },
+                            onImport = { link ->
+                                recipeVm.startImport(link)
+                                navController.navigate("recipeImport")
+                            },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                    composable(
+                        "recipe/{id}",
+                        arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    ) { entry ->
+                        RecipeDetailScreen(
+                            viewModel = recipeVm,
+                            recipeId = entry.arguments?.getLong("id") ?: -1L,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                    composable("recipeImport") {
+                        RecipeImportScreen(
+                            viewModel = recipeVm,
+                            onSaved = {
+                                // Zur Rezeptliste, egal ob man von dort oder per "Teilen" kam.
+                                if (!navController.popBackStack("recipes", inclusive = false)) {
+                                    navController.popBackStack()
+                                    navController.navigate("recipes")
+                                }
+                            },
+                            onBack = { navController.popBackStack() },
                         )
                     }
                     composable(
@@ -143,5 +196,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShare(intent)
+    }
+
+    private fun handleShare(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
+        sharedText.value = text
     }
 }

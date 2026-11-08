@@ -168,7 +168,12 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
             _cloudMessage.value = when (val result = app.account.signIn(activityContext)) {
                 is SignInResult.Success -> {
                     val moved = foods.moveLocalToCloud()
-                    if (moved > 0) "Angemeldet. $moved Einträge vom Handy in die gemeinsame Liste übernommen." else null
+                    val movedRecipes = app.recipes.moveLocalToCloud()
+                    listOfNotNull(
+                        "$moved Einträge".takeIf { moved > 0 },
+                        "$movedRecipes Rezepte".takeIf { movedRecipes > 0 },
+                    ).takeIf { it.isNotEmpty() }
+                        ?.let { "Angemeldet. ${it.joinToString(" und ")} vom Handy in die gemeinsame Liste übernommen." }
                 }
                 is SignInResult.NotAllowed ->
                     "${result.email} ist nicht freigeschaltet. Die Adresse muss in Firebase unter „allowed“ eingetragen sein."

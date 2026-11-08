@@ -12,6 +12,7 @@ Android-App, die Lebensmittel und ihre Haltbarkeitsdaten im Blick behält – da
 - **Tägliche Erinnerung** mit Vorwarnung einen Tag vorher
 - **Räumt selbst auf:** Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm (einstellbar von 0 bis 30 Tage). Bis dahin stehen sie rot als „abgelaufen“ in der Liste
 - **Updates automatisch** über die Releases dieses Repos
+- **Rezepte passend zum Bestand:** Über 🍳 Zutaten aus dem Bestand auswählen (bald Ablaufendes ist vorausgewählt) und im Netz nach Rezepten suchen. Ein Rezept per „Teilen“ aus dem Browser an die App schicken oder den Link einfügen: Die App liest die Zutaten (schema.org-Daten der Seite, klappt z. B. bei Chefkoch und EatSmarter) und zeigt, was da ist, was zum Grundvorrat gehört und was fehlt. Gespeicherte Rezepte stehen nach Passgenauigkeit sortiert. Gemerkt werden nur Link, Name und Zutaten, die Zubereitung steht auf der Originalseite
 - **Gemeinsame Liste (optional):** In den Einstellungen mit Google anmelden, dann teilen sich alle freigeschalteten Konten eine Liste, auch offline. Ohne Anmeldung bleibt alles nur auf dem Handy, kein Konto nötig
 
 ## Installieren
@@ -47,7 +48,7 @@ Geht der Schlüssel verloren, können installierte Apps keine Updates mehr bekom
 ### Firebase (gemeinsame Liste und Absturzberichte)
 
 - Projekt `mhd-db` in der [Firebase-Konsole](https://console.firebase.google.com), Tarif Spark (kostenlos). `app/google-services.json` gehört dazu und ist kein Geheimnis
-- Die Lebensmittel liegen in Firestore (Frankfurt) in der Sammlung `items`
+- Die Lebensmittel liegen in Firestore (Frankfurt) in der Sammlung `items`, die gespeicherten Rezepte in `recipes`
 - **Freischalten:** In Firestore unter der Sammlung `allowed` ein Dokument anlegen, dessen ID die Gmail-Adresse ist (z. B. Feld `name` = `Sylvi`). Ohne Eintrag kommt niemand rein
 - Die Sicherheitsregeln stehen in `firestore.rules`; nach einer Änderung in der Konsole unter Firestore → Regeln einfügen und veröffentlichen
 - Abstürze der Release-Version landen in der Konsole unter Crashlytics
