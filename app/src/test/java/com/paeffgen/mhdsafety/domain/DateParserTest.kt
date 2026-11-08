@@ -75,4 +75,45 @@ class DateParserTest {
         assertTrue(DateParser.parse("zu verbrauchen bis 10.11.26", today)!!.useBy)
         assertFalse(DateParser.parse("mindestens haltbar bis 10.11.26", today)!!.useBy)
     }
+
+    @Test
+    fun dotMatrixLookalikes() {
+        // Punktmatrix: 5 → S, 8 → B, 2 → Z, 6 → G
+        assertEquals(LocalDate.of(2027, 3, 15), parse("1S.03.27"))
+        assertEquals(LocalDate.of(2028, 6, 18), parse("1B.O6.Z8"))
+        assertEquals(LocalDate.of(2027, 6, 26), parse("MHD 2G.06.2027"))
+    }
+
+    @Test
+    fun looseSeparators() {
+        assertEquals(LocalDate.of(2027, 3, 12), parse("12,03,27"))
+        assertEquals(LocalDate.of(2027, 3, 12), parse("12:03:2027"))
+        assertEquals(LocalDate.of(2027, 3, 12), parse("12. 03. 27"))
+    }
+
+    @Test
+    fun spacesBetweenDots() {
+        assertEquals(LocalDate.of(2027, 3, 12), parse("1 2 . 0 3 . 2 7"))
+        assertEquals(LocalDate.of(2027, 3, 12), parse("MHD 1 2 0 3 2 7"))
+    }
+
+    @Test
+    fun isoDate() {
+        assertEquals(LocalDate.of(2027, 3, 12), parse("EXP 2027-03-12"))
+    }
+
+    @Test
+    fun compactOnlyAsFallback() {
+        assertEquals(LocalDate.of(2027, 3, 12), parse("120327"))
+        assertEquals(LocalDate.of(2027, 3, 12), parse("MHD 12032027 L4711"))
+        // Steht ein richtiges Datum da, gewinnt das gegen eine Nummer.
+        assertEquals(LocalDate.of(2027, 1, 5), parse("05.01.27 120327"))
+        assertNull(parse("L230512"))
+    }
+
+    @Test
+    fun lookalikesNeedRealDigits() {
+        assertNull(parse("Salz: lies.zB.Os"))
+        assertNull(parse("is.Ob.lo"))
+    }
 }

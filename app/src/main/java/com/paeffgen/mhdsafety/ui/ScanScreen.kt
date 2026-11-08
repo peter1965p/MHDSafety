@@ -4,7 +4,12 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.Bitmap
+import android.util.Size as PixelSize
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
@@ -58,18 +63,76 @@ import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.paeffgen.mhdsafety.R
+import com.paeffgen.mhdsafety.domain.Box
+import com.paeffgen.mhdsafety.domain.DateImage
 import com.paeffgen.mhdsafety.domain.DateParser
+import com.paeffgen.mhdsafety.domain.DateVariant
+import com.paeffgen.mhdsafety.domain.DateVotes
 import com.paeffgen.mhdsafety.domain.ParsedDate
 import java.time.LocalDate
+import java.util.concurrent.Executors
 
 enum class ScanMode { BARCODE, DATE }
 
-/** So oft hintereinander muss dasselbe erkannt werden, damit Lesefehler nicht durchrutschen. */
+/** So oft hintereinander muss derselbe Barcode erkannt werden, damit Lesefehler nicht durchrutschen. */
 private const val STABLE_FRAMES = 2
+
+/** Anfangszoom beim Datum-Scannen. */
+private const val DATE_ZOOM = 1.8f
+
+/**
+ * Bild für Bild eine andere Aufbereitung. "Punkte verbunden" kommt am häufigsten dran:
+ * im Test las ML Kit damit 18 von 18 Punktmatrix-Aufdrucken, roh keinen einzigen.
+ * Sauberer Druck klappt mit allen Varianten.
+ */
+private val DATE_VARIANTS = listOf(
+    DateVariant.DOTS, DateVariant.RAW, DateVariant.DOTS, DateVariant.CONTRAST, DateVariant.DOTS, DateVariant.INVERTED,
+)
+
+/** Wie viel über dem Rahmen noch mitgelesen wird (Anteil der Rahmenhöhe), für „zu verbrauchen bis“. */
+private const val ABOVE_FRAME = 1f
+
+/**
+ * Schneidet den Rahmen aus dem Kamerabild, bereitet ihn auf und liest das Datum.
+ * Läuft auf dem Analyse-Thread und wartet dort auf die Texterkennung.
+ */
+private fun readDate(
+    proxy: ImageProxy,
+    recognizer: TextRecognizer,
+    variant: DateVariant,
+    viewWidth: Int,
+    viewHeight: Int,
+): ParsedDate? {
+    val rotation = proxy.imageInfo.rotationDegrees
+    val frameF = frameRect(ScanMode.DATE, viewWidth.toFloat(), viewHeight.toFloat())
+    val frame = Box(frameF.left.toInt(), frameF.top.toInt(), frameF.right.toInt(), frameF.bottom.toInt())
+    val extendUp = (frame.height * ABOVE_FRAME).toInt()
+    val box = DateImage.uprightBox(proxy.width, proxy.height, rotation, viewWidth, viewHeight, frame, extendUp)
+        ?: return null
+    val plane = proxy.planes[0]
+    val gray = DateImage.uprightCrop(plane.buffer, plane.rowStride, plane.pixelStride, proxy.width, proxy.height, rotation, box)
+    val prepared = DateImage.prepare(gray, variant)
+    val argb = IntArray(prepared.pixels.size) { i ->
+        val v = prepared.pixels[i]
+        (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+    }
+    val bitmap = Bitmap.createBitmap(argb, prepared.width, prepared.height, Bitmap.Config.ARGB_8888)
+    val text = runCatching { Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0))) }.getOrNull()
+        ?: return null
+    // Nur Text im eigentlichen Rahmen auswerten; was darüber steht, nur für „zu verbrauchen bis“.
+    val frameStart = DateImage.rowsAboveFrame(box, frame, extendUp) * 0.8f
+    val inFrame = text.textBlocks.flatMap { it.lines }
+        .filter { line -> line.boundingBox?.let { it.exactCenterY() >= frameStart } == true }
+        .joinToString("\n") { it.text }
+    return DateParser.parse(inFrame, LocalDate.now())
+        ?.let { it.copy(useBy = DateParser.mentionsUseBy(text.text)) }
+}
 
 @Composable
 fun ScanScreen(
@@ -180,38 +243,53 @@ private fun CameraScanner(
             }
             ScanMode.DATE -> {
                 val recognizer: TextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-                MlKitAnalyzer(listOf(recognizer), ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED, executor) { result ->
-                    if (done) return@MlKitAnalyzer
-                    if (foundDate != null) {
-                        // Wartet auf Bestätigung; nach "Nochmal" wieder von vorn zählen.
-                        stable(null)
-                        return@MlKitAnalyzer
-                    }
-                    val text = result.getValue(recognizer) ?: return@MlKitAnalyzer
-                    val frame = frameRect(mode, previewView.width.toFloat(), previewView.height.toFloat())
-                    // Nur Text im Rahmen auswerten, sonst stören Nährwerttabelle & Co.
-                    val inFrame = text.textBlocks.flatMap { it.lines }.filter { line ->
-                        line.boundingBox?.let { frame.contains(Offset(it.exactCenterX(), it.exactCenterY())) } == true
-                    }.joinToString("\n") { it.text }
-                    val parsed = DateParser.parse(inFrame, LocalDate.now())
-                        // "zu verbrauchen" steht oft eine Zeile drüber, also im ganzen Bild suchen.
-                        ?.let { it.copy(useBy = DateParser.mentionsUseBy(text.text)) }
-                    if (stable(parsed?.date)) {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        foundDate = parsed
+                val votes = DateVotes()
+                var frameNo = 0
+                // Kleine Schrift braucht Pixel: statt der üblichen 640×480 in Full HD analysieren.
+                controller.imageAnalysisResolutionSelector = ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(PixelSize(1920, 1080), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER),
+                    )
+                    .build()
+                ImageAnalysis.Analyzer { proxy ->
+                    proxy.use {
+                        if (done) return@Analyzer
+                        if (foundDate != null) {
+                            // Wartet auf Bestätigung; nach "Nochmal" wieder von vorn zählen.
+                            votes.clear()
+                            return@Analyzer
+                        }
+                        val variant = DATE_VARIANTS[frameNo++ % DATE_VARIANTS.size]
+                        val parsed = readDate(proxy, recognizer, variant, previewView.width, previewView.height)
+                        val sure = votes.add(parsed) ?: return@Analyzer
+                        executor.execute {
+                            if (done || foundDate != null) return@execute
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            foundDate = sure
+                        }
                     }
                 } to recognizer
             }
         }
 
-        controller.setImageAnalysisAnalyzer(executor, analyzer.first)
+        // Datum: Aufbereitung + Texterkennung dauern, also nicht auf dem Hauptthread.
+        val worker = if (mode == ScanMode.DATE) Executors.newSingleThreadExecutor() else null
+        controller.setImageAnalysisAnalyzer(worker ?: executor, analyzer.first)
         controller.bindToLifecycle(lifecycleOwner)
         previewView.controller = controller
+        if (mode == ScanMode.DATE) {
+            // Etwas Zoom: dann kann man weiter weg halten, wo die Kamera noch scharf stellt.
+            controller.initializationFuture.addListener({
+                val max = controller.zoomState.value?.maxZoomRatio ?: 1f
+                controller.setZoomRatio(DATE_ZOOM.coerceAtMost(max))
+            }, executor)
+        }
 
         onDispose {
             done = true
             controller.clearImageAnalysisAnalyzer()
             controller.unbind()
+            worker?.shutdown()
             analyzer.second.close()
         }
     }
@@ -256,6 +334,14 @@ private fun CameraScanner(
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                 )
+                if (mode == ScanMode.DATE) {
+                    Text(
+                        "Unscharf? Aufs Bild tippen. Blass oder spiegelnd? Licht an oder etwas schräg halten.",
+                        color = Color.White.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             } else {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
