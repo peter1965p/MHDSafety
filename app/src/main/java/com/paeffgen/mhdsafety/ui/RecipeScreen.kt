@@ -1,5 +1,6 @@
 package com.paeffgen.mhdsafety.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,13 +27,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,9 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.paeffgen.mhdsafety.data.Recipe
+import com.paeffgen.mhdsafety.domain.CookChange
+import com.paeffgen.mhdsafety.domain.Cooking
 import com.paeffgen.mhdsafety.domain.Expiry
 import com.paeffgen.mhdsafety.domain.IngredientMatch
 import com.paeffgen.mhdsafety.domain.Quantity
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** Ein gespeichertes Rezept mit Abgleich gegen den Bestand. */
@@ -49,12 +62,18 @@ import java.time.LocalDate
 @Composable
 fun RecipeDetailScreen(viewModel: RecipeViewModel, recipeId: Long, onBack: () -> Unit) {
     val recipes by viewModel.recipes.collectAsStateWithLifecycle()
+    val foods by viewModel.foods.collectAsStateWithLifecycle()
+    val bufferDays by viewModel.bufferDays.collectAsStateWithLifecycle()
     val recipe = recipes?.firstOrNull { it.id == recipeId }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var showCook by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     RecipeScaffold(
         title = recipe?.name ?: "Rezept",
         onBack = onBack,
+        snackbarHostState = snackbarHostState,
         actions = {
             if (recipe != null) {
                 IconButton(onClick = { confirmDelete = true }) {
@@ -63,7 +82,43 @@ fun RecipeDetailScreen(viewModel: RecipeViewModel, recipeId: Long, onBack: () ->
             }
         },
     ) {
-        if (recipe != null) RecipeContent(viewModel, recipe) else if (recipes != null) CenterText("Rezept nicht gefunden.")
+        if (recipe != null) {
+            RecipeContent(
+                viewModel = viewModel,
+                recipe = recipe,
+                header = { FlameButton("Gekocht", onClick = { showCook = true }) },
+            )
+        } else if (recipes != null) {
+            CenterText("Rezept nicht gefunden.")
+        }
+    }
+
+    if (showCook && recipe != null) {
+        val plan = remember(recipe, foods, bufferDays) {
+            Cooking.plan(viewModel.check(recipe, foods, bufferDays))
+        }
+        CookDialog(
+            changes = plan,
+            onConfirm = { selected ->
+                showCook = false
+                val originals = viewModel.applyCooking(selected)
+                val removed = selected.count { it.usedUp }
+                val changed = selected.size - removed
+                scope.launch {
+                    val text = listOfNotNull(
+                        "$removed entfernt".takeIf { removed > 0 },
+                        "$changed angepasst".takeIf { changed > 0 },
+                    ).joinToString(", ")
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Guten Appetit! Bestand: $text",
+                        actionLabel = "Rückgängig",
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.undoCooking(originals)
+                }
+            },
+            onDismiss = { showCook = false },
+        )
     }
 
     if (confirmDelete && recipe != null) {
@@ -140,9 +195,11 @@ private fun RecipeScaffold(
     title: String,
     onBack: () -> Unit,
     actions: @Composable () -> Unit = {},
+    snackbarHostState: SnackbarHostState? = null,
     content: @Composable () -> Unit,
 ) {
     Scaffold(
+        snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
         topBar = {
             TopAppBar(
                 title = { Text(title, maxLines = 1) },
@@ -241,5 +298,68 @@ private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @C
 private fun CenterText(text: String) {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Text(text, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** Zeigt, was "Gekocht" am Bestand ändert; jede Zeile lässt sich abwählen. */
+@Composable
+private fun CookDialog(changes: List<CookChange>, onConfirm: (List<CookChange>) -> Unit, onDismiss: () -> Unit) {
+    val selected = remember(changes) {
+        mutableStateMapOf<Long, Boolean>().apply { changes.forEach { put(it.item.id, it.suggested) } }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Gekocht 🔥") },
+        text = {
+            if (changes.isEmpty()) {
+                Text("Aus dem Bestand wurde für dieses Rezept nichts verwendet.")
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    Text("Was soll aus dem Bestand abgezogen werden?", style = MaterialTheme.typography.bodyMedium)
+                    changes.forEach { change ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selected[change.item.id] = selected[change.item.id] != true },
+                        ) {
+                            Checkbox(
+                                checked = selected[change.item.id] == true,
+                                onCheckedChange = { selected[change.item.id] = it },
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(change.item.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    describe(change),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (change.exact) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.tertiary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(changes.filter { selected[it.item.id] == true }) },
+                enabled = changes.any { selected[it.item.id] == true },
+            ) { Text("Abziehen") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen") } },
+    )
+}
+
+private fun describe(change: CookChange): String {
+    val before = change.item.amount
+    val unit = change.item.unit
+    return when {
+        !change.exact -> "aufgebraucht? (ohne genaue Menge, bitte prüfen)"
+        change.usedUp -> "aufgebraucht" + (before?.let { " (${it.format()})" } ?: "") + ", wird entfernt"
+        before != null && unit != null -> "${before.format()} → ${Quantity(change.newQuantity ?: 0.0, unit).format()}"
+        else -> "wird angepasst"
     }
 }

@@ -2,6 +2,12 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.4.0] - 2026-11-08
+
+- Neu: „Gekocht“-Knopf 🔥 im Rezept. Er zieht die verbrauchten Mengen vom Bestand ab, bald Ablaufendes zuerst. Was aufgebraucht ist, verschwindet aus der Liste
+- Vorher zeigt die App, was sie ändern will („Hackfleisch: 500 g → 200 g“), jede Zeile lässt sich abwählen. Zutaten ohne genaue Menge sind nur ein Vorschlag, bei „etwas“ oder „evtl.“ nicht vorausgewählt
+- Danach gibt es „Rückgängig“
+
 ## [1.3.0] - 2026-11-08
 
 - Neu: Menge pro Eintrag (g, ml oder Stück). Beim Barcode-Scan kommt die Packungsgröße automatisch von Open Food Facts, auch bei Mehrfachpackungen wie „4 x 125 g“

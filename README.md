@@ -13,6 +13,7 @@ Android-App, die Lebensmittel und ihre Haltbarkeitsdaten im Blick behält – da
 - **Räumt selbst auf:** Abgelaufene Einträge werden automatisch gelöscht, standardmäßig 7 Tage nach dem Alarm (einstellbar von 0 bis 30 Tage). Bis dahin stehen sie rot als „abgelaufen“ in der Liste
 - **Updates automatisch** über die Releases dieses Repos
 - **Rezepte passend zum Bestand:** Über 🍳 Zutaten aus dem Bestand auswählen (bald Ablaufendes ist vorausgewählt) und im Netz nach Rezepten suchen. Ein Rezept per „Teilen“ aus dem Browser an die App schicken oder den Link einfügen: Die App liest die Zutaten (schema.org-Daten der Seite, klappt z. B. bei Chefkoch und EatSmarter) und zeigt, was da ist, was zum Grundvorrat gehört und was fehlt. Gespeicherte Rezepte stehen nach Passgenauigkeit sortiert. Gemerkt werden nur Link, Name und Zutaten, die Zubereitung steht auf der Originalseite
+- **Gekocht 🔥:** Im Rezept zieht der Knopf die verbrauchten Mengen vom Bestand ab (bald Ablaufendes zuerst, Aufgebrauchtes wird entfernt). Vorher zeigt ein Dialog jede Änderung zum Abwählen, danach gibt es „Rückgängig“
 - **Mengen:** Pro Eintrag optional g, ml oder Stück. Beim Scannen kommt die Packungsgröße von Open Food Facts. Rezepte zeigen dann auch, ob die Menge reicht (g und ml werden grob 1 : 1 verglichen, Stück nur mit Stück; ohne Menge im Bestand gilt eine Zutat als „da“)
 - **Gemeinsame Liste (optional):** In den Einstellungen mit Google anmelden, dann teilen sich alle freigeschalteten Konten eine Liste, auch offline. Ohne Anmeldung bleibt alles nur auf dem Handy, kein Konto nötig
 

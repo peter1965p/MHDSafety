@@ -7,6 +7,7 @@ import com.paeffgen.mhdsafety.MhdSafetyApp
 import com.paeffgen.mhdsafety.data.FetchResult
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.Recipe
+import com.paeffgen.mhdsafety.domain.CookChange
 import com.paeffgen.mhdsafety.domain.Expiry
 import com.paeffgen.mhdsafety.domain.IngredientMatcher
 import com.paeffgen.mhdsafety.domain.RecipeCheck
@@ -82,6 +83,24 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun delete(recipe: Recipe) {
         viewModelScope.launch { app.recipes.delete(recipe) }
+    }
+
+    /**
+     * Wendet die ausgewählten Änderungen nach dem Kochen an.
+     * @return die Einträge vorher, für "Rückgängig"
+     */
+    fun applyCooking(changes: List<CookChange>): List<FoodItem> {
+        viewModelScope.launch {
+            changes.forEach { change ->
+                if (change.usedUp) app.foods.delete(change.item) else app.foods.save(change.updatedItem)
+            }
+        }
+        return changes.map { it.item }
+    }
+
+    /** Stellt Einträge so wieder her, wie sie vor dem Kochen waren. */
+    fun undoCooking(originals: List<FoodItem>) {
+        viewModelScope.launch { originals.forEach { app.foods.save(it) } }
     }
 
     fun check(recipe: Recipe, foods: List<FoodItem>, bufferDays: Int): RecipeCheck =
