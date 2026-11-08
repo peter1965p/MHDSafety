@@ -12,6 +12,7 @@ import com.paeffgen.mhdsafety.data.SignInResult
 import com.paeffgen.mhdsafety.data.NotifyTime
 import com.paeffgen.mhdsafety.data.ThemeMode
 import com.paeffgen.mhdsafety.domain.Expiry
+import com.paeffgen.mhdsafety.domain.Quantity
 import com.paeffgen.mhdsafety.reminder.Notifications
 import com.paeffgen.mhdsafety.reminder.ReminderScheduler
 import com.paeffgen.mhdsafety.update.CheckResult
@@ -75,11 +76,12 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun load(id: Long): FoodItem? = foods.getById(id)
 
-    fun save(item: FoodItem) {
+    /** @param packageSize Packungsgröße vom Scan, wird zum Barcode gemerkt */
+    fun save(item: FoodItem, packageSize: Quantity? = null) {
         viewModelScope.launch {
             foods.save(item)
             // Produkt merken, damit es beim nächsten Scan sofort erkannt wird.
-            item.barcode?.let { app.products.remember(it, item.name, item.category) }
+            item.barcode?.let { app.products.remember(it, item.name, item.category, packageSize) }
         }
     }
 

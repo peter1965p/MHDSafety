@@ -4,6 +4,7 @@ import com.paeffgen.mhdsafety.data.DateType
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.Recipe
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -73,6 +74,40 @@ class IngredientMatcherTest {
         assertTrue(matchOf("n. B. Salz und Pfeffer") is IngredientMatch.Pantry)
         assertTrue(matchOf("etwas Wasser") is IngredientMatch.Pantry)
         assertTrue(matchOf("evtl. Sahne", item("Kochsahne")) is IngredientMatch.Available)
+    }
+
+    @Test
+    fun amountsAreCompared() {
+        val sahne = FoodItem(id = 90, name = "Schlagsahne", date = today.plusDays(5), quantity = 200.0, unit = QuantityUnit.MILLILITER)
+        val short = matchOf("300 ml Sahne", sahne) as IngredientMatch.Available
+        assertTrue(short.short)
+        assertEquals(Quantity(200.0, QuantityUnit.MILLILITER), short.have)
+
+        val enough = matchOf("4 EL Sahne", sahne) as IngredientMatch.Available
+        assertTrue(!enough.short)
+
+        // Zwei Packungen werden zusammengezählt.
+        val hack1 = FoodItem(id = 91, name = "Hackfleisch", date = today.plusDays(1), quantity = 250.0, unit = QuantityUnit.GRAM)
+        val hack2 = FoodItem(id = 92, name = "Hackfleisch gemischt", date = today.plusDays(2), quantity = 300.0, unit = QuantityUnit.GRAM)
+        assertTrue(!(matchOf("500 g Hackfleisch", hack1, hack2) as IngredientMatch.Available).short)
+
+        // Ohne Menge im Bestand oder bei Stück gegen Gramm: unbekannt, also nicht "zu wenig".
+        assertTrue(!(matchOf("500 g Hackfleisch", item("Hackfleisch")) as IngredientMatch.Available).short)
+        val paprika = FoodItem(id = 93, name = "Paprika", date = today.plusDays(5), quantity = 3.0, unit = QuantityUnit.PIECE)
+        assertNull((matchOf("500 g Paprikaschoten", paprika) as IngredientMatch.Available).have)
+    }
+
+    @Test
+    fun shortIngredientsLowerTheRanking() {
+        val sahne = FoodItem(id = 95, name = "Sahne", date = today.plusDays(5), quantity = 100.0, unit = QuantityUnit.MILLILITER)
+        val nudeln = item("Spaghetti")
+        fun check(name: String, vararg ingredients: String) =
+            IngredientMatcher.check(Recipe(url = name, name = name, ingredients = ingredients.toList()), listOf(sahne, nudeln), 0, today)
+        val tooLittle = check("Viel Sahne", "Spaghetti", "400 ml Sahne")
+        val fine = check("Wenig Sahne", "Spaghetti", "50 ml Sahne")
+        assertEquals(1, tooLittle.shortCount)
+        assertEquals(1, tooLittle.haveCount)
+        assertEquals(listOf("Wenig Sahne", "Viel Sahne"), IngredientMatcher.rank(listOf(tooLittle, fine)).map { it.recipe.name })
     }
 
     @Test

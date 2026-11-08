@@ -8,8 +8,20 @@ import java.time.LocalDate
 sealed interface IngredientMatch {
     val line: String
 
-    /** Im Bestand, [items] sortiert nach Dringlichkeit (dringendstes zuerst). */
-    data class Available(override val line: String, val items: List<FoodItem>) : IngredientMatch
+    /**
+     * Im Bestand, [items] sortiert nach Dringlichkeit (dringendstes zuerst).
+     * [needed] und [have] sind gesetzt, wenn sich die Mengen vergleichen lassen
+     * (Rezept nennt eine Menge, alle passenden Einträge haben eine Menge in passender Einheit).
+     */
+    data class Available(
+        override val line: String,
+        val items: List<FoodItem>,
+        val needed: Quantity? = null,
+        val have: Quantity? = null,
+    ) : IngredientMatch {
+        /** Da, aber zu wenig. */
+        val short: Boolean get() = needed != null && have != null && have.amount + 1e-9 < needed.amount
+    }
 
     /** Salz, Pfeffer, Öl & Co. – hat man einfach da. */
     data class Pantry(override val line: String) : IngredientMatch
@@ -25,8 +37,10 @@ data class RecipeCheck(
     val urgentCount: Int,
 ) {
     val total: Int get() = matches.size
-    val haveCount: Int get() = matches.count { it !is IngredientMatch.Missing }
-    val missingCount: Int get() = total - haveCount
+    /** Da und genug (soweit man das weiß). */
+    val haveCount: Int get() = total - missingCount - shortCount
+    val missingCount: Int get() = matches.count { it is IngredientMatch.Missing }
+    val shortCount: Int get() = matches.count { it is IngredientMatch.Available && it.short }
     val fromStockCount: Int get() = matches.count { it is IngredientMatch.Available }
 }
 
@@ -55,7 +69,8 @@ object IngredientMatcher {
      * bei Gleichstand das, was mehr bald Ablaufendes verbraucht.
      */
     fun rank(checks: List<RecipeCheck>): List<RecipeCheck> = checks.sortedWith(
-        compareBy<RecipeCheck> { it.missingCount }
+        compareBy<RecipeCheck> { it.missingCount + it.shortCount }
+            .thenBy { it.missingCount }
             .thenByDescending { it.urgentCount }
             .thenByDescending { it.fromStockCount }
             .thenBy { it.recipe.name.lowercase() },
@@ -74,9 +89,24 @@ object IngredientMatcher {
             words.any { w -> itemWords.any { wordsMatch(w, it) } }
         }
         return when {
-            found.isNotEmpty() -> IngredientMatch.Available(line, found.sortedBy { Expiry.alarmDate(it, bufferDays) })
+            found.isNotEmpty() -> {
+                val needed = QuantityParser.parseIngredient(line)
+                IngredientMatch.Available(
+                    line = line,
+                    items = found.sortedBy { Expiry.alarmDate(it, bufferDays) },
+                    needed = needed,
+                    have = needed?.let { totalIn(found, it.unit) },
+                )
+            }
             else -> IngredientMatch.Missing(line)
         }
+    }
+
+    /** Summe der Mengen in [unit], oder null, wenn ein Eintrag keine (vergleichbare) Menge hat. */
+    private fun totalIn(items: List<FoodItem>, unit: QuantityUnit): Quantity? {
+        var sum = 0.0
+        for (item in items) sum += item.amount?.inUnit(unit) ?: return null
+        return Quantity(sum, unit)
     }
 
     /** Suchbegriff für die Rezeptsuche aus einem Produktnamen: ohne Mengen, Prozente und Füllwörter. */

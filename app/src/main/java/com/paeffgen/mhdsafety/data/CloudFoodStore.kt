@@ -3,6 +3,7 @@ package com.paeffgen.mhdsafety.data
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.paeffgen.mhdsafety.domain.QuantityUnit
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -57,6 +58,8 @@ class CloudFoodStore {
             "barcode" to item.barcode,
             "category" to item.category.name,
             "ownUseBy" to item.ownUseBy?.toEpochDay(),
+            "quantity" to item.quantity,
+            "unit" to item.unit?.name,
         )
 
         private fun toItem(doc: DocumentSnapshot): FoodItem? {
@@ -71,6 +74,8 @@ class CloudFoodStore {
                 category = doc.getString("category")
                     ?.let { runCatching { Category.valueOf(it) }.getOrNull() } ?: Category.OTHER,
                 ownUseBy = doc.getLong("ownUseBy")?.let(LocalDate::ofEpochDay),
+                quantity = doc.getDouble("quantity"),
+                unit = doc.getString("unit")?.let { runCatching { QuantityUnit.valueOf(it) }.getOrNull() },
             )
         }
     }

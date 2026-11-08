@@ -224,7 +224,8 @@ private fun FoodRow(
                 )
                 Text(
                     "$label ${item.date.formatDe()}" +
-                        (item.ownUseBy?.let { " · selbst bis ${it.formatDe()}" } ?: ""),
+                        (item.ownUseBy?.let { " · selbst bis ${it.formatDe()}" } ?: "") +
+                        (item.amount?.let { " · ${it.format()}" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(

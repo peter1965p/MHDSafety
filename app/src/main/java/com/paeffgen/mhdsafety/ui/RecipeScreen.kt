@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.paeffgen.mhdsafety.data.Recipe
 import com.paeffgen.mhdsafety.domain.Expiry
 import com.paeffgen.mhdsafety.domain.IngredientMatch
+import com.paeffgen.mhdsafety.domain.Quantity
 import java.time.LocalDate
 
 /** Ein gespeichertes Rezept mit Abgleich gegen den Bestand. */
@@ -190,7 +191,7 @@ private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @C
             Row(verticalAlignment = Alignment.Top) {
                 Text(
                     when (match) {
-                        is IngredientMatch.Available -> "✅"
+                        is IngredientMatch.Available -> if (match.short) "⚠️" else "✅"
                         is IngredientMatch.Pantry -> "🧂"
                         is IngredientMatch.Missing -> "❌"
                     },
@@ -199,13 +200,29 @@ private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @C
                 Column {
                     Text(match.line, style = MaterialTheme.typography.bodyLarge)
                     when (match) {
-                        is IngredientMatch.Available -> match.items.take(2).forEach { item ->
-                            val status = Expiry.status(item, bufferDays, today)
-                            Text(
-                                "${item.name} · Alarm ${daysText(Expiry.daysUntilAlarm(item, bufferDays, today))}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = status.color(),
-                            )
+                        is IngredientMatch.Available -> {
+                            match.items.take(2).forEach { item ->
+                                val status = Expiry.status(item, bufferDays, today)
+                                Text(
+                                    item.name + (item.amount?.let { " · ${it.format()}" } ?: "") +
+                                        " · Alarm ${daysText(Expiry.daysUntilAlarm(item, bufferDays, today))}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = status.color(),
+                                )
+                            }
+                            val needed = match.needed
+                            val have = match.have
+                            if (needed != null && have != null) {
+                                Text(
+                                    if (match.short) {
+                                        "zu wenig: ${have.format()} da, ${Quantity(needed.amount - have.amount, needed.unit).format()} fehlen"
+                                    } else {
+                                        "reicht: ${have.format()} da, ${needed.format()} gebraucht"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (match.short) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                         is IngredientMatch.Pantry -> Text("Grundvorrat", style = MaterialTheme.typography.bodySmall)
                         is IngredientMatch.Missing -> Text(

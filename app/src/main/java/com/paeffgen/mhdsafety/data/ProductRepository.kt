@@ -1,6 +1,8 @@
 package com.paeffgen.mhdsafety.data
 
 import com.paeffgen.mhdsafety.domain.CategoryMapper
+import com.paeffgen.mhdsafety.domain.Quantity
+import com.paeffgen.mhdsafety.domain.QuantityParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -9,7 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 sealed interface LookupResult {
-    data class Found(val name: String, val category: Category?) : LookupResult
+    data class Found(val name: String, val category: Category?, val packageSize: Quantity? = null) : LookupResult
     data object NotFound : LookupResult
     data object NetworkError : LookupResult
 }
@@ -19,18 +21,20 @@ class ProductRepository(private val dao: ProductDao) {
     /** Erst im eigenen Gedächtnis suchen, dann bei Open Food Facts. */
     suspend fun lookup(barcode: String): LookupResult {
         if (!barcode.all(Char::isDigit)) return LookupResult.NotFound
-        dao.get(barcode)?.let { return LookupResult.Found(it.name, it.category) }
+        dao.get(barcode)?.let { return LookupResult.Found(it.name, it.category, it.packageSize) }
         return fetchFromOpenFoodFacts(barcode)
     }
 
-    suspend fun remember(barcode: String, name: String, category: Category) {
-        dao.upsert(Product(barcode, name, category))
+    /** @param packageSize Packungsgröße; ohne Angabe bleibt die schon gemerkte erhalten. */
+    suspend fun remember(barcode: String, name: String, category: Category, packageSize: Quantity? = null) {
+        val size = packageSize ?: dao.get(barcode)?.packageSize
+        dao.upsert(Product(barcode, name, category, size?.amount, size?.unit))
     }
 
     private suspend fun fetchFromOpenFoodFacts(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         val url = URL(
             "https://world.openfoodfacts.org/api/v2/product/$barcode" +
-                "?fields=product_name,product_name_de,brands,categories_tags&lc=de",
+                "?fields=product_name,product_name_de,brands,categories_tags,quantity,product_quantity,product_quantity_unit&lc=de",
         )
         val connection = url.openConnection() as HttpURLConnection
         try {
@@ -59,7 +63,12 @@ class ProductRepository(private val dao: ProductDao) {
 
             val tagsJson = product.optJSONArray("categories_tags")
             val tags = (0 until (tagsJson?.length() ?: 0)).map { tagsJson!!.getString(it) }
-            LookupResult.Found(name, CategoryMapper.map(tags))
+            val packageSize = QuantityParser.fromOpenFoodFacts(
+                productQuantity = product.optString("product_quantity").takeIf { it.isNotBlank() && it != "null" },
+                productUnit = product.optString("product_quantity_unit").takeIf { it.isNotBlank() },
+                quantityText = product.optString("quantity").takeIf { it.isNotBlank() },
+            )
+            LookupResult.Found(name, CategoryMapper.map(tags), packageSize)
         } catch (_: IOException) {
             LookupResult.NetworkError
         } catch (_: org.json.JSONException) {

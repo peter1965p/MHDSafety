@@ -215,13 +215,19 @@ private fun RecipeRow(check: RecipeCheck, onClick: () -> Unit) {
                     )
                 }
             }
-            Text(if (check.missingCount == 0) "✅" else "🛒", style = MaterialTheme.typography.titleLarge)
+            Text(if (check.missingCount + check.shortCount == 0) "✅" else "🛒", style = MaterialTheme.typography.titleLarge)
         }
     }
 }
 
-fun summaryText(check: RecipeCheck): String = when (check.missingCount) {
-    0 -> "Alles da (${check.total} Zutaten)"
-    1 -> "${check.haveCount} von ${check.total} da, 1 fehlt"
-    else -> "${check.haveCount} von ${check.total} da, ${check.missingCount} fehlen"
+fun summaryText(check: RecipeCheck): String {
+    if (check.missingCount + check.shortCount == 0) return "Alles da (${check.total} Zutaten)"
+    val parts = mutableListOf("${check.haveCount} von ${check.total} da")
+    if (check.shortCount > 0) parts += "${check.shortCount} zu wenig"
+    when (check.missingCount) {
+        0 -> Unit
+        1 -> parts += "1 fehlt"
+        else -> parts += "${check.missingCount} fehlen"
+    }
+    return parts.joinToString(", ")
 }

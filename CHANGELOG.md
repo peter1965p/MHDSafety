@@ -2,6 +2,13 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.3.0] - 2026-11-08
+
+- Neu: Menge pro Eintrag (g, ml oder Stück). Beim Barcode-Scan kommt die Packungsgröße automatisch von Open Food Facts, auch bei Mehrfachpackungen wie „4 x 125 g“
+- Beim Bearbeiten steht „Noch da“, mit Knopf „Hälfte verbraucht“
+- Rezepte vergleichen jetzt auch Mengen: „zu wenig: 200 ml da, 100 ml fehlen“ ⚠️. Rezepte, bei denen etwas fehlt oder zu wenig da ist, rutschen nach unten
+- Die Liste zeigt die Menge neben dem Datum
+
 ## [1.2.0] - 2026-11-08
 
 - Neu: Rezepte 🍳 (oben in der Liste). „Was koche ich?“ schlägt Zutaten aus eurem Bestand vor, bald Ablaufendes ist schon ausgewählt, und sucht damit Rezepte im Netz

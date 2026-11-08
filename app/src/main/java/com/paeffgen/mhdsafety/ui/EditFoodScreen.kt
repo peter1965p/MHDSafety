@@ -59,6 +59,8 @@ import com.paeffgen.mhdsafety.data.LookupResult
 import com.paeffgen.mhdsafety.domain.Expiry
 import com.paeffgen.mhdsafety.domain.ManualDate
 import com.paeffgen.mhdsafety.domain.ParsedDate
+import com.paeffgen.mhdsafety.domain.Quantity
+import com.paeffgen.mhdsafety.domain.QuantityUnit
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -93,6 +95,11 @@ fun EditFoodScreen(
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var pendingLookup by rememberSaveable { mutableStateOf<String?>(null) }
     var lookupMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var quantityText by rememberSaveable { mutableStateOf("") }
+    var unit by rememberSaveable { mutableStateOf(QuantityUnit.GRAM) }
+    // Packungsgröße vom Scan, wird beim Speichern zum Barcode gemerkt.
+    var packageAmount by rememberSaveable { mutableStateOf<Double?>(null) }
+    var packageUnit by rememberSaveable { mutableStateOf<QuantityUnit?>(null) }
 
     fun selectCategory(c: Category) {
         category = c
@@ -109,6 +116,8 @@ fun EditFoodScreen(
                 dateType = it.dateType
                 barcode = it.barcode
                 category = it.category
+                quantityText = it.quantity?.let(Quantity::formatNumber).orEmpty()
+                unit = it.unit ?: QuantityUnit.GRAM
                 existing = true
                 dateTypeTouched = true
                 categoryTouched = true
@@ -142,7 +151,15 @@ fun EditFoodScreen(
             is LookupResult.Found -> {
                 if (name.isBlank()) name = result.name
                 if (!categoryTouched && result.category != null) selectCategory(result.category)
-                "Gefunden: ${result.name}"
+                result.packageSize?.let { size ->
+                    packageAmount = size.amount
+                    packageUnit = size.unit
+                    if (quantityText.isBlank()) {
+                        quantityText = Quantity.formatNumber(size.amount)
+                        unit = size.unit
+                    }
+                }
+                "Gefunden: ${result.name}" + (result.packageSize?.let { " (${it.format()})" } ?: "")
             }
             LookupResult.NotFound -> "Produkt unbekannt, bitte Namen eintippen."
             LookupResult.NetworkError -> "Keine Verbindung, bitte Namen eintippen."
@@ -152,7 +169,9 @@ fun EditFoodScreen(
 
     val date = dateEpochDay?.let(LocalDate::ofEpochDay)
     val ownUseBy = ownUseByEpochDay?.let(LocalDate::ofEpochDay)
-    val canSave = name.isNotBlank() && date != null
+    val quantity = Quantity.parseNumber(quantityText)
+    val quantityInvalid = quantityText.isNotBlank() && quantity == null
+    val canSave = name.isNotBlank() && date != null && !quantityInvalid
 
     fun buildItem() = FoodItem(
         id = itemId ?: 0,
@@ -162,7 +181,15 @@ fun EditFoodScreen(
         barcode = barcode,
         category = category,
         ownUseBy = ownUseBy,
+        quantity = quantity,
+        unit = if (quantity != null) unit else null,
     )
+
+    fun packageSize(): Quantity? {
+        val a = packageAmount
+        val u = packageUnit
+        return if (a != null && u != null) Quantity(a, u) else null
+    }
 
     Scaffold(
         topBar = {
@@ -215,6 +242,38 @@ fun EditFoodScreen(
                 }
             } else {
                 lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            }
+
+            // --- Menge: beim Scan die Packungsgröße, später was noch übrig ist ---
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = quantityText,
+                    onValueChange = { quantityText = it },
+                    label = { Text(if (existing) "Noch da" else "Menge") },
+                    placeholder = { Text("optional") },
+                    singleLine = true,
+                    isError = quantityInvalid,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                )
+                SingleChoiceSegmentedButtonRow(Modifier.weight(1.3f)) {
+                    QuantityUnit.entries.forEachIndexed { index, u ->
+                        SegmentedButton(
+                            selected = unit == u,
+                            onClick = { unit = u },
+                            shape = SegmentedButtonDefaults.itemShape(index, QuantityUnit.entries.size),
+                            icon = {},
+                        ) { Text(u.label) }
+                    }
+                }
+            }
+            if (existing && quantity != null) {
+                TextButton(onClick = { quantityText = Quantity.formatNumber(quantity / 2) }) {
+                    Text("Hälfte verbraucht")
+                }
             }
 
 
@@ -322,7 +381,7 @@ fun EditFoodScreen(
 
             Button(
                 onClick = {
-                    viewModel.save(buildItem())
+                    viewModel.save(buildItem(), packageSize())
                     onDone()
                 },
                 enabled = canSave,
