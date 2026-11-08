@@ -31,12 +31,18 @@ echo "▶ Version $VERSION setzen"
 sed -i "s/^APP_VERSION=.*/APP_VERSION=$VERSION/" gradle.properties
 
 echo "▶ Tests und Release-Build"
-./gradlew --quiet :app:testDebugUnitTest :app:assembleRelease
-
 APK=app/build/outputs/apk/release/app-release.apk
+# Alte APK weg, damit nie eine liegengebliebene hochgeladen wird.
+rm -f "$APK"
+# Ohne Konfigurations-Cache: ein kopierter Cache hat schon mal in einer alten
+# Projektkopie gebaut und 1.1.0 als 1.2.0 veröffentlicht.
+./gradlew --quiet --no-configuration-cache :app:testDebugUnitTest :app:assembleRelease
+
 [[ -f "$APK" ]] || die "Keine signierte APK gebaut. Sind die MHD_KEYSTORE_*-Einträge in gradle.properties von Gradle gesetzt?"
 BUILD_TOOLS="$(ls -d "${ANDROID_HOME:-$HOME/Dev/Android/Sdk}"/build-tools/* | sort -V | tail -1)"
 "$BUILD_TOOLS/apksigner" verify "$APK" || die "APK-Signatur ungültig."
+APK_VERSION="$("$BUILD_TOOLS/aapt2" dump badging "$APK" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
+[[ "$APK_VERSION" == "$VERSION" ]] || die "Die APK hat Version $APK_VERSION statt $VERSION. Nichts veröffentlicht."
 
 mkdir -p releases
 OUT="releases/MHDSafety-$VERSION.apk"
