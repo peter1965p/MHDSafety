@@ -7,6 +7,7 @@ Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App 
 - Neu: „Gekocht“-Knopf 🔥 im Rezept. Er zieht die verbrauchten Mengen vom Bestand ab, bald Ablaufendes zuerst. Was aufgebraucht ist, verschwindet aus der Liste
 - Vorher zeigt die App, was sie ändern will („Hackfleisch: 500 g → 200 g“), jede Zeile lässt sich abwählen. Zutaten ohne genaue Menge sind nur ein Vorschlag, bei „etwas“ oder „evtl.“ nicht vorausgewählt
 - Danach gibt es „Rückgängig“
+- Behoben: Die Update-Suche meldete bei einer GitHub-Störung „Keine Internetverbindung“ oder brach mit Fehler 503 ab. Jetzt versucht sie es bis zu dreimal, sagt ehrlich „GitHub ist gerade gestört“ und findet das Update notfalls direkt über die Release-Seite
 
 ## [1.3.0] - 2026-11-08
 

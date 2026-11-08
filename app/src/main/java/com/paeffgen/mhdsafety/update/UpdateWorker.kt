@@ -21,6 +21,8 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         if (BuildConfig.DEBUG || !app.settings.autoUpdate.first()) return Result.success()
 
         val result = app.updates.check()
+        // Gestört oder offline: WorkManager versucht es später mit wachsendem Abstand erneut.
+        if (result is CheckResult.Failed) return Result.retry()
         if (result is CheckResult.UpdateAvailable) {
             val version = result.info.version.toString()
             // Pro Version nur einmal benachrichtigen
