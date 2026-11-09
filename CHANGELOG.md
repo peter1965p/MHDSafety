@@ -2,6 +2,11 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [1.6.0] - 2026-11-09
+
+- Neu: Preis-Hinweis beim Artikel 💶. Wer einen Artikel mit Barcode öffnet, sieht den zuletzt gemeldeten Preis („0,39 € bei Netto am 23.10.“) und den günstigsten aus dem letzten Jahr, Angebote sind markiert
+- Die Preise stammen von Open Prices, gemeldet von der Open-Food-Facts-Community. Nur Euro-Preise aus Deutschland. Nicht jedes Produkt hat schon Einträge
+
 ## [1.5.0] - 2026-11-08
 
 - Besser: Datum scannen liest jetzt auch Punktschrift (Tintenstrahl-Aufdruck) und blassen Druck. Die Kamera schaut genauer hin und bereitet das Bild im Rahmen auf, bevor sie liest
