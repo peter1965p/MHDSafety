@@ -6,6 +6,7 @@ import com.paeffgen.mhdsafety.data.AutoDelete
 import com.paeffgen.mhdsafety.data.CloudAccount
 import com.paeffgen.mhdsafety.data.CloudFoodStore
 import com.paeffgen.mhdsafety.data.CloudRecipeStore
+import com.paeffgen.mhdsafety.data.PriceRepository
 import com.paeffgen.mhdsafety.data.FoodRepository
 import com.paeffgen.mhdsafety.data.RecipeFetcher
 import com.paeffgen.mhdsafety.data.RecipeRepository
@@ -26,6 +27,7 @@ class MhdSafetyApp : Application() {
     val database by lazy { AppDatabase.create(this) }
     val settings by lazy { SettingsRepository(this) }
     val products by lazy { ProductRepository(database.productDao()) }
+    val prices by lazy { PriceRepository() }
     val updates by lazy { UpdateRepository(this) }
     val account by lazy { CloudAccount(this) }
     val foods by lazy { FoodRepository(database.foodDao(), CloudFoodStore(), account) }

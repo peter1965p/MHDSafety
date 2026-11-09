@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,9 +57,11 @@ import com.paeffgen.mhdsafety.data.Category
 import com.paeffgen.mhdsafety.data.DateType
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.LookupResult
+import com.paeffgen.mhdsafety.data.PriceLookup
 import com.paeffgen.mhdsafety.domain.Expiry
 import com.paeffgen.mhdsafety.domain.ManualDate
 import com.paeffgen.mhdsafety.domain.ParsedDate
+import com.paeffgen.mhdsafety.domain.Prices
 import com.paeffgen.mhdsafety.domain.Quantity
 import com.paeffgen.mhdsafety.domain.QuantityUnit
 import java.time.LocalDate
@@ -142,6 +145,13 @@ fun EditFoodScreen(
             }
         }
         onScanConsumed()
+    }
+
+    // Gemeldete Preise nachladen, sobald ein Barcode bekannt ist – still im Hintergrund.
+    var priceLookup by remember { mutableStateOf<PriceLookup?>(null) }
+    LaunchedEffect(barcode) {
+        priceLookup = null
+        barcode?.let { priceLookup = viewModel.lookupPrice(it) }
     }
 
     LaunchedEffect(pendingLookup) {
@@ -243,6 +253,7 @@ fun EditFoodScreen(
             } else {
                 lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
+            priceLookup?.let { PriceInfo(it) }
 
             // --- Menge: beim Scan die Packungsgröße, später was noch übrig ist ---
             Row(
@@ -445,4 +456,34 @@ private fun DatePickDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, on
             TextButton(onClick = onDismiss) { Text("Abbrechen") }
         },
     ) { DatePicker(state = state) }
+}
+
+/** „Zuletzt gesehen“ und „am günstigsten“ aus Open Prices. */
+@Composable
+private fun PriceInfo(lookup: PriceLookup) {
+    val today = LocalDate.now()
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when (lookup) {
+        is PriceLookup.Known -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                "💶 Zuletzt gesehen: ${Prices.describe(lookup.hint.latest, today)}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            lookup.hint.cheapest?.let {
+                Text("Am günstigsten: ${Prices.describe(it, today)}", style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                "Gemeldet von der Open-Prices-Community, ${lookup.hint.count} " +
+                    (if (lookup.hint.count == 1) "Preis" else "Preise") + " im letzten Jahr",
+                style = MaterialTheme.typography.bodySmall,
+                color = muted,
+            )
+        }
+        PriceLookup.Unknown -> Text(
+            "💶 Noch kein Preis aus dem letzten Jahr gemeldet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+        )
+        PriceLookup.Offline -> Unit
+    }
 }

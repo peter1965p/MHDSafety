@@ -8,6 +8,7 @@ import com.paeffgen.mhdsafety.BuildConfig
 import com.paeffgen.mhdsafety.MhdSafetyApp
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.LookupResult
+import com.paeffgen.mhdsafety.data.PriceLookup
 import com.paeffgen.mhdsafety.data.SignInResult
 import com.paeffgen.mhdsafety.data.NotifyTime
 import com.paeffgen.mhdsafety.data.ThemeMode
@@ -86,6 +87,8 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun lookupProduct(barcode: String): LookupResult = app.products.lookup(barcode)
+
+    suspend fun lookupPrice(barcode: String): PriceLookup = app.prices.lookup(barcode)
 
     fun delete(item: FoodItem) {
         viewModelScope.launch { foods.delete(item) }
