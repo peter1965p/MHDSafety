@@ -2,6 +2,15 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [2.1.0] - 2026-11-23
+
+- Neu: Video-Rezepte. In YouTube oder WhatsApp auf „Teilen → MHD Safety“ tippen, und das Video landet als Rezept in der App – auch Shorts, Instagram und TikTok
+- Das Video spielt direkt in der App (datenschutzfreundlicher Player ohne Cookies, Vollbild möglich), daneben „In YouTube öffnen“
+- Stehen die Zutaten in der Videobeschreibung, übernimmt die App sie; sonst trägt man sie selbst ein und sie werden wie gewohnt mit dem Bestand abgeglichen
+- Rezepte haben jetzt Notizen, Zutaten lassen sich nachträglich ergänzen
+- Rezeptliste mit Vorschaubild, Videos mit ▶
+- Alles gleicht über das gemeinsame Konto ab
+
 ## [2.0.0] - 2026-11-23
 
 - Neu: eigenes Konto statt Google-Anmeldung. Registrieren mit E-Mail und Passwort, die Daten liegen auf einem eigenen Server in Deutschland statt bei Google (Firebase ist komplett raus, auch die Absturzberichte)

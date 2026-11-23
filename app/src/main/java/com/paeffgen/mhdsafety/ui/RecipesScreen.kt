@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -204,6 +205,10 @@ fun RecipesScreen(
 private fun RecipeRow(check: RecipeCheck, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (check.recipe.imageUrl != null || check.recipe.videoId != null) {
+                RecipeThumb(check.recipe.imageUrl, isVideo = check.recipe.source != null)
+                androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
+            }
             Column(Modifier.weight(1f)) {
                 Text(check.recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(summaryText(check), style = MaterialTheme.typography.bodyMedium)

@@ -61,6 +61,9 @@ object SyncCodec {
         .put("servings", recipe.servings ?: JSONObject.NULL)
         .put("imageUrl", recipe.imageUrl ?: JSONObject.NULL)
         .put("createdAt", recipe.createdAt)
+        .put("videoId", recipe.videoId ?: JSONObject.NULL)
+        .put("source", recipe.source ?: JSONObject.NULL)
+        .put("notes", recipe.notes ?: JSONObject.NULL)
         .put("updatedAt", recipe.updatedAt)
         .put("deleted", false)
 
@@ -76,6 +79,9 @@ object SyncCodec {
             createdAt = o.optLongOrNull("createdAt") ?: 0L,
             updatedAt = o.getLong("updatedAt"),
             dirty = false,
+            videoId = o.optStringOrNull("videoId"),
+            source = o.optStringOrNull("source"),
+            notes = o.optStringOrNull("notes"),
         )
     }
 

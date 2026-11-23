@@ -28,6 +28,12 @@ data class Recipe(
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
     /** Lokal geändert, noch nicht zum Server übertragen. */
     @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+    /** YouTube-Video-ID, wenn das Rezept ein Video ist (Player wird eingebettet). */
+    val videoId: String? = null,
+    /** "youtube", "instagram", "tiktok" – null bei normalen Rezeptseiten. */
+    val source: String? = null,
+    /** Eigene Notizen, z. B. "statt Sahne Milch". */
+    val notes: String? = null,
 )
 
 @Dao

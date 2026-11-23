@@ -87,6 +87,7 @@ fun RecipeDetailScreen(viewModel: RecipeViewModel, recipeId: Long, onBack: () ->
                 viewModel = viewModel,
                 recipe = recipe,
                 header = { FlameButton("Gekocht", onClick = { showCook = true }) },
+                onUpdate = viewModel::update,
             )
         } else if (recipes != null) {
             CenterText("Rezept nicht gefunden.")
@@ -217,7 +218,12 @@ private fun RecipeScaffold(
 }
 
 @Composable
-private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @Composable () -> Unit = {}) {
+private fun RecipeContent(
+    viewModel: RecipeViewModel,
+    recipe: Recipe,
+    header: @Composable () -> Unit = {},
+    onUpdate: ((Recipe) -> Unit)? = null,
+) {
     val foods by viewModel.foods.collectAsStateWithLifecycle()
     val bufferDays by viewModel.bufferDays.collectAsStateWithLifecycle()
     val check = remember(recipe, foods, bufferDays) { viewModel.check(recipe, foods, bufferDays) }
@@ -231,6 +237,7 @@ private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @C
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                recipe.videoId?.let { VideoPlayer(it) }
                 Text(recipe.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
                     summaryText(check) + (recipe.servings?.let { " · $it" } ?: ""),
@@ -239,9 +246,27 @@ private fun RecipeContent(viewModel: RecipeViewModel, recipe: Recipe, header: @C
                 Text(recipe.url.removePrefix("https://").substringBefore('/'), style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     header()
-                    OutlinedButton(onClick = { uriHandler.openUri(recipe.url) }) { Text("Zubereitung") }
+                    OutlinedButton(onClick = { uriHandler.openUri(recipe.url) }) {
+                        Text(
+                            when (recipe.source) {
+                                "youtube" -> "In YouTube öffnen"
+                                "instagram" -> "In Instagram öffnen"
+                                "tiktok" -> "In TikTok öffnen"
+                                else -> "Zubereitung"
+                            },
+                        )
+                    }
                 }
+                if (onUpdate != null) NotesField(recipe, onUpdate)
+                else recipe.notes?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 Text("Zutaten", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+                if (recipe.ingredients.isEmpty()) {
+                    Text(
+                        if (onUpdate != null) "Noch keine Zutaten – unten eintragen, dann gleicht die App sie mit dem Bestand ab."
+                        else "Im Video stehen keine Zutaten. Nach dem Speichern kannst du sie eintragen.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
         items(check.matches) { match ->
@@ -361,5 +386,38 @@ private fun describe(change: CookChange): String {
         change.usedUp -> "aufgebraucht" + (before?.let { " (${it.format()})" } ?: "") + ", wird entfernt"
         before != null && unit != null -> "${before.format()} → ${Quantity(change.newQuantity ?: 0.0, unit).format()}"
         else -> "wird angepasst"
+    }
+}
+
+
+@Composable
+private fun NotesField(recipe: Recipe, onUpdate: (Recipe) -> Unit) {
+    var notes by rememberSaveable(recipe.id) { mutableStateOf(recipe.notes.orEmpty()) }
+    var zutat by rememberSaveable(recipe.id) { mutableStateOf("") }
+    androidx.compose.material3.OutlinedTextField(
+        value = notes,
+        onValueChange = { notes = it },
+        label = { Text("Notizen") },
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 2,
+    )
+    if (notes != recipe.notes.orEmpty()) {
+        TextButton(onClick = { onUpdate(recipe.copy(notes = notes.ifBlank { null })) }) { Text("Notizen speichern") }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.OutlinedTextField(
+            value = zutat,
+            onValueChange = { zutat = it },
+            label = { Text("Zutat hinzufügen, z. B. 200 g Sahne") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            enabled = zutat.isNotBlank(),
+            onClick = {
+                onUpdate(recipe.copy(ingredients = recipe.ingredients + zutat.trim()))
+                zutat = ""
+            },
+        ) { Text("+") }
     }
 }

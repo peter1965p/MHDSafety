@@ -63,7 +63,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 is FetchResult.Found -> ImportState.Loaded(result.recipe)
                 FetchResult.NoRecipe -> ImportState.Failed(
                     "Auf dieser Seite wurde kein Rezept gefunden. Klappt mit den meisten Rezeptseiten " +
-                        "wie Chefkoch, Lecker oder EatSmarter – aber nicht mit Suchergebnissen oder Videos.",
+                        "wie Chefkoch, Lecker oder EatSmarter und mit Videos von YouTube, Instagram und TikTok.",
                     url,
                 )
                 is FetchResult.Failed -> ImportState.Failed(result.message, url)
@@ -79,6 +79,11 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearImport() {
         _import.value = ImportState.Idle
+    }
+
+    /** Notizen oder Zutaten eines gespeicherten Rezepts ändern. */
+    fun update(recipe: Recipe) {
+        viewModelScope.launch { app.recipes.save(recipe) }
     }
 
     fun delete(recipe: Recipe) {
