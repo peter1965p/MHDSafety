@@ -1,46 +1,43 @@
 package com.paeffgen.mhdsafety.data
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * Weiche: angemeldet -> gemeinsame Liste in der Cloud, sonst nur lokal auf dem Handy.
+ * Bestand auf dem Handy (Room). Mit Anmeldung gleicht [SyncManager] ihn im Hintergrund mit dem Konto ab;
+ * ohne Anmeldung bleibt alles nur auf diesem Gerät. Die App funktioniert so auch offline.
  */
 class FoodRepository(
     private val local: FoodDao,
-    private val cloud: CloudFoodStore,
+    private val tombstones: TombstoneDao,
     private val account: CloudAccount,
+    private val sync: () -> SyncManager,
 ) {
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val items: Flow<List<FoodItem>> = account.email
-        .map { it != null }
-        .distinctUntilChanged()
-        .flatMapLatest { signedIn -> if (signedIn) cloud.observeAll() else local.observeAll() }
+    val items: Flow<List<FoodItem>> = local.observeAll()
 
-    suspend fun getAll(): List<FoodItem> = if (account.isSignedIn) cloud.getAll() else local.getAll()
+    suspend fun getAll(): List<FoodItem> = local.getAll()
 
-    suspend fun getById(id: Long): FoodItem? = if (account.isSignedIn) cloud.getById(id) else local.getById(id)
+    suspend fun getById(id: Long): FoodItem? = local.getById(id)
 
+    /** Speichert; neue Einträge (id 0) bekommen eine zufällige id, damit Geräte sich nicht in die Quere kommen. */
     suspend fun save(item: FoodItem) {
-        if (account.isSignedIn) cloud.save(item) else local.upsert(item)
+        val id = if (item.id == 0L) SyncCodec.newId() else item.id
+        local.upsert(item.copy(id = id, updatedAt = stamp(item.updatedAt), dirty = true))
+        sync().requestSync()
     }
 
-    suspend fun delete(item: FoodItem) {
-        if (account.isSignedIn) cloud.delete(item) else local.delete(item)
-    }
+    suspend fun delete(item: FoodItem) = deleteAll(listOf(item))
 
     suspend fun deleteAll(items: List<FoodItem>) {
-        if (account.isSignedIn) items.forEach(cloud::delete) else local.deleteAll(items)
+        if (items.isEmpty()) return
+        local.deleteAll(items)
+        if (account.isSignedIn) {
+            items.forEach { tombstones.upsert(Tombstone(Tombstone.ITEMS, it.id, stamp(it.updatedAt))) }
+            sync().requestSync()
+        }
     }
 
-    /** Nach dem Anmelden: was bisher nur auf dem Handy stand, in die gemeinsame Liste schieben. */
-    suspend fun moveLocalToCloud(): Int {
-        val localItems = local.getAll()
-        localItems.forEach { cloud.save(it.copy(id = CloudFoodStore.newId())) }
-        local.deleteAll(localItems)
-        return localItems.size
+    companion object {
+        /** Jetzt, aber immer später als der bisherige Stand (falls die Uhr des Handys nachgeht). */
+        fun stamp(previous: Long): Long = maxOf(System.currentTimeMillis(), previous + 1)
     }
 }

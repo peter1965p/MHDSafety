@@ -1,7 +1,6 @@
 package com.paeffgen.mhdsafety.ui
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.paeffgen.mhdsafety.BuildConfig
@@ -9,6 +8,9 @@ import com.paeffgen.mhdsafety.MhdSafetyApp
 import com.paeffgen.mhdsafety.data.FoodItem
 import com.paeffgen.mhdsafety.data.LookupResult
 import com.paeffgen.mhdsafety.data.PriceLookup
+import com.paeffgen.mhdsafety.data.AccountInfo
+import com.paeffgen.mhdsafety.data.Invitation
+import com.paeffgen.mhdsafety.data.SessionExpired
 import com.paeffgen.mhdsafety.data.SignInResult
 import com.paeffgen.mhdsafety.data.NotifyTime
 import com.paeffgen.mhdsafety.data.ThemeMode
@@ -51,6 +53,15 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
     val cloudMessage: StateFlow<String?> = _cloudMessage.asStateFlow()
     private val _cloudBusy = MutableStateFlow(false)
     val cloudBusy: StateFlow<Boolean> = _cloudBusy.asStateFlow()
+    private val _accountInfo = MutableStateFlow<AccountInfo?>(null)
+    /** Konto mit allen Anmeldungen (null = noch nicht geladen oder nicht angemeldet). */
+    val accountInfo: StateFlow<AccountInfo?> = _accountInfo.asStateFlow()
+    private val _invitation = MutableStateFlow<Invitation?>(null)
+    /** Gerade erzeugter Einladungscode, zum Weitergeben an die neue Person. */
+    val invitation: StateFlow<Invitation?> = _invitation.asStateFlow()
+    private val _apiUrl = MutableStateFlow(app.authStore.apiUrl)
+    val apiUrl: StateFlow<String> = _apiUrl.asStateFlow()
+    val syncStatus: StateFlow<String?> = app.sync.status
     val bufferDays: StateFlow<Int> = settings.bufferDays.state(Expiry.DEFAULT_BUFFER_DAYS)
     val deleteAfterDays: StateFlow<Int> = settings.deleteAfterDays.state(Expiry.DEFAULT_DELETE_AFTER_DAYS)
     val notifyTime: StateFlow<NotifyTime> = settings.notifyTime.state(NotifyTime.DEFAULT)
@@ -165,36 +176,104 @@ class FoodViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** @param activityContext eine Activity, damit der Google-Konto-Dialog erscheinen kann */
-    fun signIn(activityContext: Context) {
+    /** Anmelden, Registrieren oder Einladung annehmen – danach Daten übernehmen und abgleichen. */
+    fun signIn(mode: SignInMode, email: String, password: String, code: String = "") {
         if (_cloudBusy.value) return
         viewModelScope.launch {
             _cloudBusy.value = true
-            _cloudMessage.value = when (val result = app.account.signIn(activityContext)) {
+            val result = when (mode) {
+                SignInMode.LOGIN -> app.account.login(email, password)
+                SignInMode.REGISTER -> app.account.register(email, password)
+                SignInMode.INVITE -> app.account.acceptInvite(email, code, password)
+            }
+            _cloudMessage.value = when (result) {
                 is SignInResult.Success -> {
-                    val moved = foods.moveLocalToCloud()
-                    val movedRecipes = app.recipes.moveLocalToCloud()
-                    listOfNotNull(
-                        "$moved Einträge".takeIf { moved > 0 },
-                        "$movedRecipes Rezepte".takeIf { movedRecipes > 0 },
-                    ).takeIf { it.isNotEmpty() }
-                        ?.let { "Angemeldet. ${it.joinToString(" und ")} vom Handy in die gemeinsame Liste übernommen." }
+                    val moved = app.sync.adoptLocalData(result.accountId)
+                    app.sync.syncNow()
+                    refreshAccount()
+                    if (moved > 0) "Angemeldet. $moved Einträge vom Handy ins Konto übernommen." else "Angemeldet."
                 }
-                is SignInResult.NotAllowed ->
-                    "${result.email} ist nicht freigeschaltet. Die Adresse muss in Firebase unter „allowed“ eingetragen sein."
-                SignInResult.Cancelled -> null
                 is SignInResult.Failed -> result.message
             }
             _cloudBusy.value = false
         }
     }
 
+    fun requestPasswordReset(email: String) {
+        viewModelScope.launch { _cloudMessage.value = app.account.requestPasswordReset(email) }
+    }
+
     fun signOut() {
         viewModelScope.launch {
+            app.sync.syncNow()
             app.account.signOut()
-            _cloudMessage.value = "Abgemeldet. Die gemeinsame Liste bleibt in der Cloud, auf dem Handy wird wieder lokal gespeichert."
+            app.sync.clearLocal()
+            _accountInfo.value = null
+            _invitation.value = null
+            _cloudMessage.value = "Abgemeldet. Der Bestand bleibt im Konto und ist nach der nächsten Anmeldung wieder da."
         }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch { app.sync.syncNow() }
+    }
+
+    /** Anmeldungen des Kontos neu laden. */
+    fun refreshAccount() {
+        viewModelScope.launch {
+            _accountInfo.value = cloudCall { app.account.info() } ?: _accountInfo.value
+        }
+    }
+
+    fun invitePerson(email: String) {
+        viewModelScope.launch {
+            cloudCall { app.account.invite(email) }?.fold(
+                onSuccess = { _invitation.value = it; refreshAccount() },
+                onFailure = { _cloudMessage.value = it.message },
+            )
+        }
+    }
+
+    fun reinvite(loginId: Long) {
+        viewModelScope.launch {
+            cloudCall { app.account.reinvite(loginId) }?.fold(
+                onSuccess = { _invitation.value = it },
+                onFailure = { _cloudMessage.value = it.message },
+            )
+        }
+    }
+
+    fun removeLogin(loginId: Long) {
+        viewModelScope.launch {
+            cloudCall { app.account.removeLogin(loginId) }?.fold(
+                onSuccess = { refreshAccount() },
+                onFailure = { _cloudMessage.value = it.message },
+            )
+        }
+    }
+
+    fun dismissInvitation() {
+        _invitation.value = null
+    }
+
+    fun setApiUrl(url: String) {
+        if (url.isBlank()) return
+        app.authStore.apiUrl = url
+        _apiUrl.value = app.authStore.apiUrl
+    }
+
+    /** Fängt Netz- und Sitzungsfehler ab und zeigt sie als Meldung. */
+    private suspend fun <T> cloudCall(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: SessionExpired) {
+        _cloudMessage.value = e.message
+        null
+    } catch (e: IOException) {
+        _cloudMessage.value = "Server nicht erreichbar: ${e.message ?: ""}".trim()
+        null
     }
 
     fun sendTestNotification() = Notifications.showTest(app)
 }
+
+enum class SignInMode { LOGIN, REGISTER, INVITE }

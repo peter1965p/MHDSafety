@@ -16,7 +16,7 @@ Android-App, die Lebensmittel und ihre Haltbarkeitsdaten im Blick behält – da
 - **Rezepte passend zum Bestand:** Über 🍳 Zutaten aus dem Bestand auswählen (bald Ablaufendes ist vorausgewählt) und im Netz nach Rezepten suchen. Ein Rezept per „Teilen“ aus dem Browser an die App schicken oder den Link einfügen: Die App liest die Zutaten (schema.org-Daten der Seite, klappt z. B. bei Chefkoch und EatSmarter) und zeigt, was da ist, was zum Grundvorrat gehört und was fehlt. Gespeicherte Rezepte stehen nach Passgenauigkeit sortiert. Gemerkt werden nur Link, Name und Zutaten, die Zubereitung steht auf der Originalseite
 - **Gekocht 🔥:** Im Rezept zieht der Knopf die verbrauchten Mengen vom Bestand ab (bald Ablaufendes zuerst, Aufgebrauchtes wird entfernt). Vorher zeigt ein Dialog jede Änderung zum Abwählen, danach gibt es „Rückgängig“
 - **Mengen:** Pro Eintrag optional g, ml oder Stück. Beim Scannen kommt die Packungsgröße von Open Food Facts. Rezepte zeigen dann auch, ob die Menge reicht (g und ml werden grob 1 : 1 verglichen, Stück nur mit Stück; ohne Menge im Bestand gilt eine Zutat als „da“)
-- **Gemeinsame Liste (optional):** In den Einstellungen mit Google anmelden, dann teilen sich alle freigeschalteten Konten eine Liste, auch offline. Ohne Anmeldung bleibt alles nur auf dem Handy, kein Konto nötig
+- **Gemeinsame Liste (optional):** In den Einstellungen ein Konto anlegen und weitere Personen per Code einladen, dann teilen sich alle eine Liste, auch offline. Ohne Anmeldung bleibt alles nur auf dem Handy, kein Konto nötig
 
 ## Installieren
 
@@ -48,13 +48,13 @@ MHD_KEY_ALIAS=mhdsafety
 
 Geht der Schlüssel verloren, können installierte Apps keine Updates mehr bekommen – also gut sichern.
 
-### Firebase (gemeinsame Liste und Absturzberichte)
+### Konto und gemeinsame Liste (eigene MHD-API)
 
-- Projekt `mhd-db` in der [Firebase-Konsole](https://console.firebase.google.com), Tarif Spark (kostenlos). `app/google-services.json` gehört dazu und ist kein Geheimnis
-- Die Lebensmittel liegen in Firestore (Frankfurt) in der Sammlung `items`, die gespeicherten Rezepte in `recipes`
-- **Freischalten:** In Firestore unter der Sammlung `allowed` ein Dokument anlegen, dessen ID die Gmail-Adresse ist (z. B. Feld `name` = `Sylvi`). Ohne Eintrag kommt niemand rein
-- Die Sicherheitsregeln stehen in `firestore.rules`; nach einer Änderung in der Konsole unter Firestore → Regeln einfügen und veröffentlichen
-- Abstürze der Release-Version landen in der Konsole unter Crashlytics
+- Seit 2.0.0 ohne Google/Firebase: Konten, Anmeldung und Abgleich laufen über die eigene **MHD-API** (Repo `mhd-api`, FastAPI + PostgreSQL)
+- Ein Konto besitzt den Bestand; mehrere Personen melden sich mit eigener E-Mail und eigenem Passwort am selben Konto an (Einladung per Code). Konten sind in der Datenbank per Row-Level-Security getrennt
+- Die App speichert alles in Room und gleicht im Hintergrund ab (neuester Stand gewinnt, Löschungen als Tombstone)
+- Server-Adresse: Vorgabe beim Bauen mit `-PMHD_API_URL=https://…` (sonst Heimnetz `http://192.168.178.214:8080`), in der App unter Einstellungen → Konto → „Server …“ änderbar
+- Klartext-HTTP ist nur für die Heimnetz-Adresse erlaubt (`res/xml/network_security_config.xml`); sobald die API per HTTPS öffentlich ist, die Ausnahme entfernen
 
 ## Danke
 

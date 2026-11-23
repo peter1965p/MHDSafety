@@ -2,8 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
 }
 
 // Die Version steht nur in gradle.properties (APP_VERSION=1.2.3).
@@ -31,6 +29,9 @@ android {
         versionCode = appVersionCode
         versionName = appVersion
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
+        // Vorgabe für die eigene MHD-API (in der App unter Einstellungen → Konto → Server änderbar).
+        val apiUrl = providers.gradleProperty("MHD_API_URL").orElse("http://192.168.178.214:8080").get()
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -103,14 +104,6 @@ dependencies {
     implementation(libs.androidx.camera.mlkit.vision)
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.mlkit.text.recognition)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.crashlytics)
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.play.services)
-    implementation(libs.googleid)
-    implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))

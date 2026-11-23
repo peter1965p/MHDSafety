@@ -62,9 +62,6 @@ fun SettingsScreen(viewModel: FoodViewModel, onBack: () -> Unit) {
     val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
-    val cloudEmail by viewModel.cloudEmail.collectAsStateWithLifecycle()
-    val cloudMessage by viewModel.cloudMessage.collectAsStateWithLifecycle()
-    val cloudBusy by viewModel.cloudBusy.collectAsStateWithLifecycle()
 
     // Neu prüfen, wenn man aus den System-Einstellungen zurückkommt.
     var notificationsOn by remember { mutableStateOf(Notifications.canNotify(context)) }
@@ -92,25 +89,7 @@ fun SettingsScreen(viewModel: FoodViewModel, onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Gemeinsame Liste", style = MaterialTheme.typography.titleMedium)
-            val email = cloudEmail
-            if (email == null) {
-                Text(
-                    "Mit Google anmelden, um eine Liste mit der Familie zu teilen. " +
-                        "Ohne Anmeldung bleibt alles nur auf diesem Handy.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Button(onClick = { viewModel.signIn(context) }, enabled = !cloudBusy) {
-                    Text(if (cloudBusy) "Melde an …" else "Mit Google anmelden")
-                }
-            } else {
-                Text(
-                    "Angemeldet als $email. Die Liste wird mit allen freigeschalteten Konten geteilt.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                OutlinedButton(onClick = viewModel::signOut) { Text("Abmelden") }
-            }
-            cloudMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            CloudSection(viewModel)
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 

@@ -25,4 +25,17 @@ interface FoodDao {
 
     @Delete
     suspend fun deleteAll(items: List<FoodItem>)
+
+    @Query("SELECT * FROM food_items WHERE dirty = 1")
+    suspend fun getDirty(): List<FoodItem>
+
+    /** Nur wenn sich seit dem Hochladen nichts mehr geändert hat. */
+    @Query("UPDATE food_items SET dirty = 0 WHERE id = :id AND updatedAt = :updatedAt")
+    suspend fun markClean(id: Long, updatedAt: Long)
+
+    @Query("DELETE FROM food_items WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM food_items")
+    suspend fun clear()
 }

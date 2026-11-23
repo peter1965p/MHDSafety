@@ -32,6 +32,10 @@ data class FoodItem(
     /** Wie viel noch da ist, in [unit] (g, ml oder Stück). Beim Scannen kommt die Packungsgröße. */
     val quantity: Double? = null,
     val unit: QuantityUnit? = null,
+    /** Letzte Änderung in ms (Gerätezeit); beim Sync gewinnt der neueste Stand. */
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
+    /** Lokal geändert, noch nicht zum Server übertragen. */
+    @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 ) {
     /** Menge, falls bekannt. */
     val amount: Quantity?

@@ -8,8 +8,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [FoodItem::class, Product::class, Recipe::class],
-    version = 6,
+    entities = [FoodItem::class, Product::class, Recipe::class, Tombstone::class],
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -17,6 +17,7 @@ import androidx.room.TypeConverters
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
     ],
 )
 @TypeConverters(Converters::class)
@@ -24,6 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun productDao(): ProductDao
     abstract fun recipeDao(): RecipeDao
+    abstract fun tombstoneDao(): TombstoneDao
 
     companion object {
         fun create(context: Context): AppDatabase =

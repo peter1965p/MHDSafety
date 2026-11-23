@@ -2,6 +2,15 @@
 
 Alle Versionen von MHD Safety. Der Abschnitt einer Version erscheint in der App als „Was ist neu“.
 
+## [2.0.0] - 2026-11-23
+
+- Neu: eigenes Konto statt Google-Anmeldung. Registrieren mit E-Mail und Passwort, die Daten liegen auf einem eigenen Server in Deutschland statt bei Google (Firebase ist komplett raus, auch die Absturzberichte)
+- Mehrere Personen, ein Bestand: Unter Einstellungen → Konto „Weitere Person hinzufügen“. Die Person bekommt einen Code, meldet sich mit eigener E-Mail und eigenem Passwort an und sieht dieselbe Liste. Die Liste der Anmeldungen steht darunter, einzelne lassen sich entfernen
+- Jedes Konto sieht nur seine eigenen Daten, das prüft auch die Datenbank selbst
+- Die App speichert alles zuerst auf dem Handy und gleicht im Hintergrund ab: funktioniert offline, zwei Handys auf demselben Konto bleiben gleich, der neueste Stand gewinnt, Gelöschtes verschwindet auch auf dem anderen Gerät
+- Beim ersten Anmelden wird der bisherige Bestand vom Handy ins Konto übernommen
+- Hinweis: Wer bisher mit Google angemeldet war, legt einmal ein neues Konto an. Die alte Google-Liste wird nicht übernommen
+
 ## [1.6.0] - 2026-11-09
 
 - Neu: Preis-Hinweis beim Artikel 💶. Wer einen Artikel mit Barcode öffnet, sieht den zuletzt gemeldeten Preis („0,39 € bei Netto am 23.10.“) und den günstigsten aus dem letzten Jahr, Angebote sind markiert

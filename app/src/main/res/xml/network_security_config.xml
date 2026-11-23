@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sonst überall nur HTTPS. Ausnahme: die MHD-API im Heimnetz (Container 103), solange sie noch
+    nicht öffentlich per HTTPS erreichbar ist. Sobald sie das ist, diese Ausnahme entfernen.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.178.214</domain>
+    </domain-config>
+</network-security-config>
