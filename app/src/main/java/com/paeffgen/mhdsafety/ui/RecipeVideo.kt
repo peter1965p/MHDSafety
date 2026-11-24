@@ -39,41 +39,27 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Eingebetteter YouTube-Player (youtube-nocookie), Vollbild über den Player-Knopf. */
-@SuppressLint("SetJavaScriptEnabled")
+/** Eingebetteter YouTube-Player (android-youtube-player, IFrame-API); Ton und Bild direkt in der App. */
 @Composable
 fun VideoPlayer(videoId: String, modifier: Modifier = Modifier) {
-    val activity = LocalContext.current as? ComponentActivity
-    var fullscreen: View? = null
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     AndroidView(
         modifier = modifier.fillMaxWidth().aspectRatio(16f / 9f),
         factory = { ctx ->
-            WebView(ctx).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = true
-                webViewClient = WebViewClient()
-                webChromeClient = object : WebChromeClient() {
-                    override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-                        val root = activity?.window?.decorView as? FrameLayout ?: return
-                        fullscreen = view
-                        root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView(ctx).apply {
+                enableAutomaticInitialization = false
+                owner.lifecycle.addObserver(this)
+                val optionen = com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions.Builder(ctx)
+                    .controls(1).fullscreen(0).rel(0).ivLoadPolicy(3).build()
+                initialize(object : com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener() {
+                    override fun onReady(youTubePlayer: com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer) {
+                        youTubePlayer.cueVideo(videoId, 0f)
                     }
-
-                    override fun onHideCustomView() {
-                        val root = activity?.window?.decorView as? FrameLayout
-                        fullscreen?.let { root?.removeView(it) }
-                        fullscreen = null
-                    }
-                }
-                setBackgroundColor(android.graphics.Color.BLACK)
-                // Player direkt laden, mit App-Referer: YouTube verlangt eine Herkunft (sonst Fehler 153 / schwarz).
-                // Kein clip() am WebView: abgerundetes Zuschneiden lässt die Video-Fläche auf vielen Geräten schwarz.
-                loadUrl(VideoLink.embedUrl(videoId), mapOf("Referer" to "https://${ctx.packageName}"))
+                }, true, optionen)
             }
         },
+        onRelease = { it.release() },
     )
-    DisposableEffect(videoId) { onDispose { } }
 }
 
 /** Vorschaubild aus dem Netz, ohne Bildbibliothek; zeigt ▶ bei Videos. */
