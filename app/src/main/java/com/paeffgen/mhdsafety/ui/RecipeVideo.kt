@@ -45,13 +45,8 @@ import java.net.URL
 fun VideoPlayer(videoId: String, modifier: Modifier = Modifier) {
     val activity = LocalContext.current as? ComponentActivity
     var fullscreen: View? = null
-    val html = """
-        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>html,body{margin:0;background:#000;height:100%}iframe{border:0;width:100%;height:100%}</style></head>
-        <body><iframe src="${VideoLink.embedUrl(videoId)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></body></html>
-    """.trimIndent()
     AndroidView(
-        modifier = modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)),
+        modifier = modifier.fillMaxWidth().aspectRatio(16f / 9f),
         factory = { ctx ->
             WebView(ctx).apply {
                 settings.javaScriptEnabled = true
@@ -71,8 +66,10 @@ fun VideoPlayer(videoId: String, modifier: Modifier = Modifier) {
                         fullscreen = null
                     }
                 }
-                // Base-URL nötig, sonst verweigert der Player die Wiedergabe (Fehler 153).
-                loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "utf-8", null)
+                setBackgroundColor(android.graphics.Color.BLACK)
+                // Player direkt laden, mit App-Referer: YouTube verlangt eine Herkunft (sonst Fehler 153 / schwarz).
+                // Kein clip() am WebView: abgerundetes Zuschneiden lässt die Video-Fläche auf vielen Geräten schwarz.
+                loadUrl(VideoLink.embedUrl(videoId), mapOf("Referer" to "https://${ctx.packageName}"))
             }
         },
     )
